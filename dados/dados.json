@@ -1,0 +1,65 @@
+{
+    "alunos": [
+        {
+            "matricula": "A001",
+            "nome": "João Silva",
+            "email": "joao@email.com",
+            "historico": []
+        },
+        {
+            "matricula": "98474",
+            "nome": "Ramona",
+            "email": "ramonavitoria@aluno.com",
+            "historico": []
+        }
+    ],
+    "cursos": [
+        {
+            "codigo": "C001",
+            "nome": "Programação em Python",
+            "carga_horaria": 60,
+            "prerequisitos": []
+        },
+        {
+            "codigo": "234",
+            "nome": "Engenharia de Software",
+            "carga_horaria": 90,
+            "prerequisitos": []
+        }
+    ],
+    "turmas": [
+        {
+            "id": "T001",
+            "curso_codigo": "C001",
+            "semestre": "2025.2",
+            "dias_horarios": {
+                "seg": [],
+                "qua": []
+            },
+            "vagas": 40,
+            "local": "Sala 101",
+            "aberta": true
+        },
+        {
+            "id": "345",
+            "curso_codigo": "234",
+            "semestre": "3043",
+            "dias_horarios": {
+                "ter": []
+            },
+            "vagas": 40,
+            "local": "biblioteca",
+            "aberta": true
+        }
+    ],
+    "matriculas": [
+        {
+            "aluno": "98474",
+            "turma": "T001",
+            "nota": null,
+            "frequencia": null,
+            "ativa": null,
+            "data": "2025-12-16"
+        }
+    ]
+}
