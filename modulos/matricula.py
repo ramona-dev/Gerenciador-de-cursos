@@ -29,19 +29,33 @@ class Matricula:
         return self._frequencia
     @property
     def ativa(self): 
-        self._ativa
+        return self._ativa
+
     @property
     def data(self):
         return self._data
 
     def lancar_nota(self, nota: float):
-        pass
+        if nota < 0 or nota > 10:
+            raise ValueError("Nota deve estar entre 0 e 10.")
+        self._nota = nota
 
     def lancar_frequencia(self, freq: float):
-        pass
+        if freq < 0 or freq > 100:
+            raise ValueError("Frequência deve estar entre 0 e 100.")
+        self._frequencia = freq
 
     def trancar(self, settings):
-       pass
+        # respeita data limite
+        if str(date.today()) > settings["data_limite_trancamento"]:
+            raise ValueError("Data limite de trancamento já passou.")
+        self._ativa = False
 
     def situacao(self):
-       pass
+        if not self._ativa:
+            return "TRANCADA"
+        if self._nota is None or self._frequencia is None:
+            return "CURSANDO"
+        if self._nota >= settings.nota_minima_aprovacao and self._frequencia >= settings.frequencia_minima:
+            return "APROVADO"
+        return "REPROVADO"

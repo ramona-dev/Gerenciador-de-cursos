@@ -8,7 +8,7 @@ class Aluno(Pessoa):
         self._matricula = matricula
         self._historico = []   # [{"curso": codigo, "nota": x, "frequencia": y}]
         self._turmas = []      # turmas atuais
-
+    
     @property
     def matricula(self):
         return self._matricula
@@ -25,7 +25,18 @@ class Aluno(Pessoa):
         self._historico.append({"curso": curso.codigo, "nota": nota, "frequencia": frequencia})
 
     def calculo_de_CR(self):
-        pass
+        if not self._historico:
+            return 0.0
+        return sum(d["nota"] for d in self._historico) / len(self._historico)
 
-    def aprovado_em(self):
-        pass 
+    def aprovado_em(self, codigo_curso):
+        return any(
+            d["curso"] == codigo_curso and d["nota"] >= 6 and d["frequencia"] >= 75
+            for d in self._historico
+        )
+
+    def __lt__(self, other):
+        # Ordena por CR, e se empatar usa nome
+        if self.calculo_de_CR() == other.calculo_de_CR():
+            return self.nome < other.nome
+        return self.calculo_de_CR() < other.calculo_de_CR()
