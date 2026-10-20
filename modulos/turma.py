@@ -1,59 +1,154 @@
 from .oferta import Oferta
 
-def parse_horario(h: str):
-    """Converte '08:00-10:00' em tupla (480, 600) de minutos."""
-    ini, fim = h.split("-")
-    h_ini, m_ini = map(int, ini.split(":"))
+
+def parse_horario(horario: str):
+
+    inicio, fim = horario.split("-")
+
+    h_inicio, m_inicio = map(int, inicio.split(":"))
     h_fim, m_fim = map(int, fim.split(":"))
-    return h_ini * 60 + m_ini, h_fim * 60 + m_fim
+
+    return (
+        h_inicio * 60 + m_inicio,
+        h_fim * 60 + m_fim
+    )
+
 
 class Turma(Oferta):
-    def __init__(self, curso, id_turma: str, semestre: str, dias_horarios: dict, vagas: int, local: str = ""):
+
+    def __init__(
+        self,
+        curso,
+        id_turma: str,
+        semestre: str,
+        dias_horarios: dict,
+        vagas: int,
+        local: str = ""
+    ):
+
         super().__init__(semestre, vagas, local)
+
         self._curso = curso
         self._id = id_turma
         self._matriculas = {}
 
-       
         self._horarios = {}
-        for dia, val in (dias_horarios or {}).items():
-            if isinstance(val, str):
-                self._horarios[dia] = [parse_horario(val)]
-            elif isinstance(val, list):
-                self._horarios[dia] = [parse_horario(v) for v in val if isinstance(v, str)]
+
+        for dia, valor in (dias_horarios or {}).items():
+
+            if isinstance(valor, str):
+
+                self._horarios[dia] = [
+                    parse_horario(valor)
+                ]
+
+            elif isinstance(valor, list):
+
+                self._horarios[dia] = [
+                    parse_horario(v)
+                    for v in valor
+                ]
+
             else:
-                raise ValueError(f"Formato inválido de horário para {dia}: {val}")
+                raise ValueError(
+                    f"Formato inválido de horário para {dia}"
+                )
 
     @property
-    def curso(self): return self._curso
+    def curso(self):
+        return self._curso
+
     @property
-    def id(self): return self._id
+    def id(self):
+        return self._id
+
     @property
-    def horarios(self): return {d: list(v) for d, v in self._horarios.items()}
+    def horarios(self):
+
+        return {
+            dia: list(intervalos)
+            for dia, intervalos in self._horarios.items()
+        }
+
+    @property
+    def matriculas(self):
+        return list(self._matriculas.values())
+
+    def registrar_matricula(self, matricula):
+
+        self._matriculas[
+            matricula.aluno
+        ] = matricula
 
     def __len__(self):
-        return sum(1 for m in self._matriculas.values() if m and m.ativa)
+
+        return sum(
+            1
+            for matricula
+            in self._matriculas.values()
+            if matricula and matricula.ativa
+        )
 
     def tem_choque(self, outra_turma):
+
         for dia, intervalos in self._horarios.items():
-            if dia in outra_turma._horarios:
-                for (ini, fim) in intervalos:
-                    for (ini2, fim2) in outra_turma._horarios[dia]:
-                        if not (fim <= ini2 or fim2 <= ini):
-                            return True
+
+            if dia not in outra_turma.horarios:
+                continue
+
+            for inicio, fim in intervalos:
+
+                for (
+                    inicio2,
+                    fim2
+                ) in outra_turma.horarios[dia]:
+
+                    if not (
+                        fim <= inicio2
+                        or
+                        fim2 <= inicio
+                    ):
+                        return True
+
         return False
 
     def adicionar_aluno(self, aluno, settings):
+
         if not self.aberta:
-            raise ValueError("Turma está fechada.")
+            raise ValueError(
+                "Turma está fechada."
+            )
+
         if len(self) >= self.vagas:
-            raise ValueError("Turma está lotada.")
-        if settings.get("max_turmas_por_aluno") and len(aluno.turmas) >= settings["max_turmas_por_aluno"]:
-            raise ValueError("Aluno já atingiu o limite de turmas.")
-        for prereq in self.curso.prerequisitos:
-            if not aluno.aprovado_em(prereq):
-                raise ValueError(f"Aluno não cumpriu o pré-requisito {prereq}.")
-        for t in aluno.turmas:
-            if self.tem_choque(t):
-                raise ValueError(f"Choque de horário com a turma {t.id}.")
-        self._matriculas[aluno] = None  # será preenchido pela Matricula
+            raise ValueError(
+                "Turma está lotada."
+            )
+
+        limite = settings.get(
+            "max_turmas_por_aluno"
+        )
+
+        if (
+            limite
+            and len(aluno.turmas) >= limite
+        ):
+            raise ValueError(
+                "Aluno já atingiu o limite de turmas."
+            )
+
+        for prerequisito in self.curso.prerequisitos:
+
+            if not aluno.aprovado_em(
+                prerequisito
+            ):
+                raise ValueError(
+                    f"Aluno não cumpriu o pré-requisito {prerequisito}."
+                )
+
+        for turma in aluno.turmas:
+
+            if self.tem_choque(turma):
+
+                raise ValueError(
+                    f"Choque de horário com a turma {turma.id}."
+                )
