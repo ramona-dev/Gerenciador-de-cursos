@@ -17,18 +17,50 @@ class Curso:
     def nome(self):
         return self._nome
     
+    @nome.setter
+    def nome(self, valor):
+        if not valor.strip():
+            raise ValueError(
+            "Nome do curso não pode ser vazio."
+        )
+        self._nome = valor
+    
     @property
     def codigo(self):
         return self._codigo
+    @codigo.setter
+    def codigo(self, valor):
+         if not valor or len(valor.strip()) < 3:
+            raise ValueError(
+            "Código do curso deve possuir pelo menos 3 caracteres."
+         )
+         self._codigo = valor
+
+    
         
     @property
     def carga_horaria(self):
         return self._carga_horaria
+    @carga_horaria.setter
+    def carga_horaria(self, valor):
+
+        if valor <= 0:
+         raise ValueError(
+            "Carga horária deve ser positiva."
+        )
+
+        self._carga_horaria = valor
         
     @property
     def prerequisitos(self):
         return list(self._prerequisitos)
-    
+    @prerequisitos.setter
+    def prerequisitos(self, valor):
+        if not isinstance(valor, list):
+            raise TypeError(
+            "Pré-requisitos devem ser uma lista."
+        )
+        self._prerequisitos = list(valor)
 
     def adicionar_prerequisito(
         self,

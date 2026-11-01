@@ -17,3 +17,17 @@ class JsonManager:
                 ensure_ascii=False,
                 indent=4
             )
+    @staticmethod
+    def carregar(caminho):
+
+        arquivo = Path(caminho)
+
+        if not arquivo.exists():
+            return []
+
+        with open(
+            caminho,
+            encoding="utf-8"
+        ) as f:
+
+            return json.load(f)
