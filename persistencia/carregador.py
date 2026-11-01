@@ -104,9 +104,12 @@ def carregar_sistema():
             matricula
         )
 
-    return {
+        return {
         "cursos": cursos,
         "alunos": alunos,
         "turmas": turmas,
-        "matriculas": matriculas
+        "matriculas": matriculas,
+        "cursos_por_codigo": cursos_por_codigo,
+        "alunos_por_matricula": alunos_por_matricula,
+        "turmas_por_id": turmas_por_id
     }
