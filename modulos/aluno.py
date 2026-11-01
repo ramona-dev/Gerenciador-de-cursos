@@ -3,7 +3,7 @@ from .pessoa import Pessoa
 
 class Aluno(Pessoa):
 
-    def _init__(self, matricula: str, nome: str, email: str):
+    def __init__(self, matricula: str, nome: str, email: str):
         super().__init__(nome, email)
 
         if not matricula.strip():

@@ -1,0 +1,8 @@
+[
+  {
+    "codigo": "POO001",
+    "nome": "Programação Orientada a Objetos",
+    "carga_horaria": 60,
+    "prerequisitos": []
+  }
+]
