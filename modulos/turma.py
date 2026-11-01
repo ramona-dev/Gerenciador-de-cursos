@@ -5,8 +5,15 @@ def parse_horario(horario: str):
 
     inicio, fim = horario.split("-")
 
-    h_inicio, m_inicio = map(int, inicio.split(":"))
-    h_fim, m_fim = map(int, fim.split(":"))
+    h_inicio, m_inicio = map(
+        int,
+        inicio.split(":")
+    )
+
+    h_fim, m_fim = map(
+        int,
+        fim.split(":")
+    )
 
     return (
         h_inicio * 60 + m_inicio,
@@ -26,7 +33,11 @@ class Turma(Oferta):
         local: str = ""
     ):
 
-        super().__init__(semestre, vagas, local)
+        super().__init__(
+            semestre,
+            vagas,
+            local
+        )
 
         self._curso = curso
         self._id = id_turma
@@ -34,15 +45,23 @@ class Turma(Oferta):
 
         self._horarios = {}
 
-        for dia, valor in (dias_horarios or {}).items():
+        for dia, valor in (
+            dias_horarios or {}
+        ).items():
 
-            if isinstance(valor, str):
+            if isinstance(
+                valor,
+                str
+            ):
 
                 self._horarios[dia] = [
                     parse_horario(valor)
                 ]
 
-            elif isinstance(valor, list):
+            elif isinstance(
+                valor,
+                list
+            ):
 
                 self._horarios[dia] = [
                     parse_horario(v)
@@ -67,14 +86,20 @@ class Turma(Oferta):
 
         return {
             dia: list(intervalos)
-            for dia, intervalos in self._horarios.items()
+            for dia, intervalos
+            in self._horarios.items()
         }
 
     @property
     def matriculas(self):
-        return list(self._matriculas.values())
+        return list(
+            self._matriculas.values()
+        )
 
-    def registrar_matricula(self, matricula):
+    def registrar_matricula(
+        self,
+        matricula
+    ):
 
         self._matriculas[
             matricula.aluno
@@ -86,17 +111,32 @@ class Turma(Oferta):
             1
             for matricula
             in self._matriculas.values()
-            if matricula and matricula.ativa
+            if (
+                matricula
+                and matricula.ativa
+            )
         )
 
-    def tem_choque(self, outra_turma):
+    def tem_choque(
+        self,
+        outra_turma
+    ):
 
-        for dia, intervalos in self._horarios.items():
+        for (
+            dia,
+            intervalos
+        ) in self._horarios.items():
 
-            if dia not in outra_turma.horarios:
+            if (
+                dia
+                not in outra_turma.horarios
+            ):
                 continue
 
-            for inicio, fim in intervalos:
+            for (
+                inicio,
+                fim
+            ) in intervalos:
 
                 for (
                     inicio2,
@@ -105,14 +145,17 @@ class Turma(Oferta):
 
                     if not (
                         fim <= inicio2
-                        or
-                        fim2 <= inicio
+                        or fim2 <= inicio
                     ):
                         return True
 
         return False
 
-    def adicionar_aluno(self, aluno, settings):
+    def adicionar_aluno(
+        self,
+        aluno,
+        settings
+    ):
 
         if not self.aberta:
             raise ValueError(
@@ -136,7 +179,9 @@ class Turma(Oferta):
                 "Aluno já atingiu o limite de turmas."
             )
 
-        for prerequisito in self.curso.prerequisitos:
+        for (
+            prerequisito
+        ) in self.curso.prerequisitos:
 
             if not aluno.aprovado_em(
                 prerequisito
@@ -147,8 +192,74 @@ class Turma(Oferta):
 
         for turma in aluno.turmas:
 
-            if self.tem_choque(turma):
-
+            if self.tem_choque(
+                turma
+            ):
                 raise ValueError(
                     f"Choque de horário com a turma {turma.id}."
                 )
+
+    def _horarios_para_json(self):
+
+        horarios = {}
+
+        for (
+            dia,
+            intervalos
+        ) in self._horarios.items():
+            horarios[dia] = []
+
+            for (
+                inicio,
+                fim
+            ) in intervalos:
+
+                h_inicio = inicio // 60
+                m_inicio = inicio % 60
+
+                h_fim = fim // 60
+                m_fim = fim % 60
+
+                horarios[dia].append(
+                    f"{h_inicio:02}:{m_inicio:02}-{h_fim:02}:{m_fim:02}"
+                )
+
+        return horarios
+
+    def to_dict(self):
+
+        return {
+            "id": self.id,
+            "curso": self.curso.codigo,
+            "semestre": self.semestre,
+            "horarios": self._horarios_para_json(),
+            "vagas": self.vagas,
+            "local": self.local,
+            "aberta": self.aberta
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        dados: dict,
+        curso
+    ):
+
+        turma = cls(
+            curso=curso,
+            id_turma=dados["id"],
+            semestre=dados["semestre"],
+            dias_horarios=dados["horarios"],
+            vagas=dados["vagas"],
+            local=dados.get(
+                "local",
+                ""
+            )
+        )
+
+        turma._aberta = dados.get(
+            "aberta",
+            True
+        )
+
+        return turma

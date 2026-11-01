@@ -5,7 +5,11 @@ import settings
 
 class Matricula:
 
-    def __init__(self, aluno, turma):
+    def __init__(
+        self,
+        aluno,
+        turma
+    ):
 
         turma.adicionar_aluno(
             aluno,
@@ -21,9 +25,13 @@ class Matricula:
         self._ativa = True
         self._data = date.today()
 
-        aluno.adicionar_turma(turma)
+        aluno.adicionar_turma(
+            turma
+        )
 
-        turma.registrar_matricula(self)
+        turma.registrar_matricula(
+            self
+        )
 
     @property
     def aluno(self):
@@ -49,7 +57,10 @@ class Matricula:
     def data(self):
         return self._data
 
-    def lancar_nota(self, nota: float):
+    def lancar_nota(
+        self,
+        nota: float
+    ):
 
         if not 0 <= nota <= 10:
             raise ValueError(
@@ -70,7 +81,10 @@ class Matricula:
 
         self._frequencia = frequencia
 
-    def trancar(self, settings_dict):
+    def trancar(
+        self,
+        settings_dict
+    ):
 
         if (
             str(date.today())
@@ -96,28 +110,79 @@ class Matricula:
 
         if (
             self._nota is None
-            or
-            self._frequencia is None
+            or self._frequencia is None
         ):
             return "CURSANDO"
 
         if (
             self._nota
-            <
-            settings.nota_minima_aprovacao
+            < settings.nota_minima_aprovacao
         ):
             return "REPROVADO_POR_NOTA"
 
         if (
             self._frequencia
-            <
-            settings.frequencia_minima
+            < settings.frequencia_minima
         ):
             return "REPROVADO_POR_FREQUENCIA"
 
         return "APROVADO"
 
-    def __eq__(self, other):
+    def to_dict(self):
+
+        return {
+            "aluno": self.aluno.matricula,
+            "turma": self.turma.id,
+            "nota": self.nota,
+            "frequencia": self.frequencia,
+            "ativa": self.ativa,
+            "data": self.data.isoformat()
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        dados,
+        aluno,
+        turma
+    ):
+
+        matricula = cls.__new__(cls)
+
+        matricula._aluno = aluno
+        matricula._turma = turma
+
+        matricula._nota = dados.get(
+            "nota"
+        )
+
+        matricula._frequencia = dados.get(
+            "frequencia"
+        )
+
+        matricula._ativa = dados.get(
+            "ativa",
+            True
+        )
+
+        matricula._data = date.fromisoformat(
+            dados["data"]
+        )
+
+        aluno.adicionar_turma(
+            turma
+        )
+
+        turma.registrar_matricula(
+            matricula
+        )
+
+        return matricula
+
+    def __eq__(
+        self,
+        other
+    ):
 
         if not isinstance(
             other,
@@ -127,12 +192,10 @@ class Matricula:
 
         return (
             self.aluno.matricula
-            ==
-            other.aluno.matricula
+            == other.aluno.matricula
             and
             self.turma.id
-            ==
-            other.turma.id
+            == other.turma.id
         )
 
     def __repr__(self):

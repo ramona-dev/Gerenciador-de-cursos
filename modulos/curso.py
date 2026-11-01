@@ -1,65 +1,74 @@
 class Curso:
 
-    def __init__(self, codigo: str, nome: str, carga_horaria: int, prerequisitos=None):
-            if not codigo or len(codigo) < 3:
-                raise ValueError("Código do curso deve ter pelo menos 3 caracteres.")
-            if not nome.strip():
-                raise ValueError("Nome do curso não pode ser vazio.")
-            if carga_horaria <= 0:
-                raise ValueError("Carga horária deve ser positiva.")
-
-            self.codigo = codigo
-            self.nome = nome
-            self.carga_horaria = carga_horaria
-            self.prerequisitos = prerequisitos or []  # lista de códigos de cursos
+    def __init__(
+        self,
+        codigo: str,
+        nome: str,
+        carga_horaria: int,
+        prerequisitos=None
+    ):
+        self.codigo = codigo
+        self.nome = nome
+        self.carga_horaria = carga_horaria
+        self.prerequisitos = prerequisitos or []
 
     @property
     def nome(self):
         return self._nome
-    
+
     @nome.setter
     def nome(self, valor):
+
         if not valor.strip():
             raise ValueError(
-            "Nome do curso não pode ser vazio."
-        )
+                "Nome do curso não pode ser vazio."
+            )
+
         self._nome = valor
-    
+
     @property
     def codigo(self):
         return self._codigo
+
     @codigo.setter
     def codigo(self, valor):
-         if not valor or len(valor.strip()) < 3:
-            raise ValueError(
-            "Código do curso deve possuir pelo menos 3 caracteres."
-         )
-         self._codigo = valor
 
-    
-        
+        if (
+            not valor
+            or len(valor.strip()) < 3
+        ):
+            raise ValueError(
+                "Código do curso deve possuir pelo menos 3 caracteres."
+            )
+
+        self._codigo = valor
+
     @property
     def carga_horaria(self):
         return self._carga_horaria
+
     @carga_horaria.setter
     def carga_horaria(self, valor):
 
         if valor <= 0:
-         raise ValueError(
-            "Carga horária deve ser positiva."
-        )
+            raise ValueError(
+                "Carga horária deve ser positiva."
+            )
 
         self._carga_horaria = valor
-        
+
     @property
     def prerequisitos(self):
         return list(self._prerequisitos)
+
     @prerequisitos.setter
     def prerequisitos(self, valor):
+
         if not isinstance(valor, list):
             raise TypeError(
-            "Pré-requisitos devem ser uma lista."
-        )
+                "Pré-requisitos devem ser uma lista."
+            )
+
         self._prerequisitos = list(valor)
 
     def adicionar_prerequisito(
@@ -81,16 +90,33 @@ class Curso:
             codigo_pre
         )
 
-         
     def to_dict(self):
+
         return {
-                "codigo": self.codigo,
-                "nome": self.nome,
-                "carga_horaria": self.carga_horaria,
-                "prerequisitos": self.prerequisitos
-                }
+            "codigo": self.codigo,
+            "nome": self.nome,
+            "carga_horaria": self.carga_horaria,
+            "prerequisitos": self.prerequisitos
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        dados: dict
+    ):
+
+        return cls(
+            codigo=dados["codigo"],
+            nome=dados["nome"],
+            carga_horaria=dados["carga_horaria"],
+            prerequisitos=dados.get(
+                "prerequisitos",
+                []
+            )
+        )
 
     def __str__(self):
+
         return (
             f"{self.codigo} - "
             f"{self.nome} "
@@ -98,6 +124,7 @@ class Curso:
         )
 
     def __repr__(self):
+
         return (
             f"Curso("
             f"{self.codigo}, "

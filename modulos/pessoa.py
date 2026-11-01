@@ -12,6 +12,7 @@ class Pessoa:
     @property
     def nome(self):
         return self._nome
+    
     @nome.setter
     def nome(self, valor):
 
@@ -19,11 +20,12 @@ class Pessoa:
         raise ValueError(
             "Nome não pode ser vazio."
         )
-        self._nome = valor
+     self._nome = valor
     
     @property
     def email(self):
         return self._email
+    
     @email.setter
     def email(self, valor):
         if "@" not in valor:
