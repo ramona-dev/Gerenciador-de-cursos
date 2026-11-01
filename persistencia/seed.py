@@ -136,6 +136,28 @@ def gerar_seed():
         5.0,
         90
     )
+    carla.adicionar_disciplina(
+    mat101,
+    8.0,
+    90
+)
+
+    carla.adicionar_disciplina(
+    alg101,
+    7.0,
+    80
+)
+    beatriz.adicionar_disciplina(
+    mat101,
+    7.5,
+    85
+)
+
+    beatriz.adicionar_disciplina(
+    alg101,
+    6.5,
+    75
+)
 
     # -------------------------
     # TURMAS

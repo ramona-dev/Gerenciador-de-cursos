@@ -1,9 +1,34 @@
 [
-  {
-    "aluno": "2025001",
-    "turma": "T01",
-    "nota": 8.5,
-    "frequencia": 90,
-    "ativa": true
-  }
+    {
+        "aluno": "2025001",
+        "turma": "TPOO1",
+        "nota": 9.0,
+        "frequencia": 95,
+        "ativa": true,
+        "data": "2026-11-01"
+    },
+    {
+        "aluno": "2025002",
+        "turma": "TPOO1",
+        "nota": 7.0,
+        "frequencia": 80,
+        "ativa": true,
+        "data": "2026-11-01"
+    },
+    {
+        "aluno": "2025005",
+        "turma": "TBD1",
+        "nota": null,
+        "frequencia": null,
+        "ativa": true,
+        "data": "2026-11-01"
+    },
+    {
+        "aluno": "2025006",
+        "turma": "TBD1",
+        "nota": 4.0,
+        "frequencia": 85,
+        "ativa": true,
+        "data": "2026-11-01"
+    }
 ]

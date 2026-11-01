@@ -1,8 +1,40 @@
 [
-  {
-    "codigo": "POO001",
-    "nome": "Programação Orientada a Objetos",
-    "carga_horaria": 60,
-    "prerequisitos": []
-  }
+    {
+        "codigo": "MAT101",
+        "nome": "Matemática",
+        "carga_horaria": 60,
+        "prerequisitos": []
+    },
+    {
+        "codigo": "ALG101",
+        "nome": "Algoritmos",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "MAT101"
+        ]
+    },
+    {
+        "codigo": "POO101",
+        "nome": "Programação Orientada a Objetos",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "ALG101"
+        ]
+    },
+    {
+        "codigo": "BD101",
+        "nome": "Banco de Dados",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "ALG101"
+        ]
+    },
+    {
+        "codigo": "ES101",
+        "nome": "Engenharia de Software",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "POO101"
+        ]
+    }
 ]

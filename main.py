@@ -1,4 +1,5 @@
-from cli.menu import iniciar
+from persistencia.carregador import (
+    carregar_sistema
+)
 
-if __name__ == "__main__":
-    iniciar()
+dados = carregar_sistema()
