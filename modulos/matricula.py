@@ -86,13 +86,19 @@ class Matricula:
         settings_dict
     ):
 
-        if (
-            str(date.today())
-            >
-            settings_dict[
-                "data_limite_trancamento"
-            ]
+        limite = settings_dict[
+            "data_limite_trancamento"
+        ]
+
+        if isinstance(
+            limite,
+            str
         ):
+            limite = date.fromisoformat(
+                limite
+            )
+
+        if date.today() > limite:
             raise ValueError(
                 "Data limite de trancamento já passou."
             )

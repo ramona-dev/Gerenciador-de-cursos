@@ -46,6 +46,9 @@ class Aluno(Pessoa):
             for disciplina in self._historico
         ) / len(self._historico)
 
+    def calculo_de_CR(self):
+        return self.cr
+
     def adicionar_disciplina(
         self,
         curso,
