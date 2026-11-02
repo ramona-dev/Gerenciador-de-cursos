@@ -4,6 +4,7 @@ from modulos.curso import Curso
 from modulos.aluno import Aluno
 from modulos.turma import Turma
 from modulos.matricula import Matricula
+from modulos.catalogo_cursos import CatalogoCursos
 from persistencia.json_manager import JsonManager
 
 # Persistencia 
@@ -47,13 +48,15 @@ def salvar_matriculas(dados):
     # CURSO 
 def cadastrar_curso(dados):
 
+    print("\n=== CADASTRAR CURSO ===")
+
     codigo = input(
         "Código: "
-    )
+    ).strip().upper()
 
     nome = input(
         "Nome: "
-    )
+    ).strip()
 
     carga_horaria = int(
         input(
@@ -61,21 +64,35 @@ def cadastrar_curso(dados):
         )
     )
 
-    curso = Curso(
-        codigo,
-        nome,
-        carga_horaria
-    )
+    try:
 
-    dados["cursos"].append(
-        curso
-    )
+        curso = Curso(
+            codigo,
+            nome,
+            carga_horaria
+        )
 
-    salvar_cursos(dados)
+        catalogo = CatalogoCursos(
+            dados["cursos"]
+        )
 
-    print(
-        "\nCurso cadastrado."
-    )
+        catalogo.adicionar_curso(
+            curso
+        )
+
+        salvar_cursos(
+            dados
+        )
+
+        print(
+            "\nCurso cadastrado com sucesso."
+        )
+
+    except Exception as erro:
+
+        print(
+            f"\nErro: {erro}"
+        )
 
     input(
         "\nEnter para continuar..."
@@ -85,31 +102,31 @@ def remover_curso(dados):
 
     codigo = input(
         "Código do curso: "
-    )
+    ).strip().upper()
 
-    for curso in dados["cursos"]:
+    try:
 
-        if curso.codigo == codigo:
+        catalogo = CatalogoCursos(
+            dados["cursos"]
+        )
 
-            dados["cursos"].remove(
-                curso
-            )
+        catalogo.remover_curso(
+            codigo
+        )
 
-            salvar_cursos(dados)
+        salvar_cursos(
+            dados
+        )
 
-            print(
-                "\nCurso removido."
-            )
+        print(
+            "\nCurso removido."
+        )
 
-            input(
-                "\nEnter para continuar..."
-            )
+    except Exception as erro:
 
-            return
-
-    print(
-        "\nCurso não encontrado."
-    )
+        print(
+            f"\nErro: {erro}"
+        )
 
     input(
         "\nEnter para continuar..."
