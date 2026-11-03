@@ -1,0 +1,92 @@
+[
+    {
+        "id": "TPOO1",
+        "curso": "POO101",
+        "semestre": "2026.2",
+        "horarios": {
+            "seg": [
+                "08:00-10:00"
+            ],
+            "qua": [
+                "08:00-10:00"
+            ]
+        },
+        "vagas": 30,
+        "local": "",
+        "aberta": false
+    },
+    {
+        "id": "TBD1",
+        "curso": "BD101",
+        "semestre": "2026.2",
+        "horarios": {
+            "ter": [
+                "10:00-12:00"
+            ],
+            "qui": [
+                "10:00-12:00"
+            ]
+        },
+        "vagas": 30,
+        "local": "",
+        "aberta": true
+    },
+    {
+        "id": "TES1",
+        "curso": "ES101",
+        "semestre": "2026.2",
+        "horarios": {
+            "sex": [
+                "14:00-18:00"
+            ]
+        },
+        "vagas": 30,
+        "local": "",
+        "aberta": true
+    },
+    {
+        "id": "001",
+        "curso": "MAT101",
+        "semestre": "1 ",
+        "horarios": {
+            "seg": [
+                "09:00-10:00"
+            ]
+        },
+        "vagas": 45,
+        "local": "",
+        "aberta": true
+    },
+    {
+        "id": "002",
+        "curso": "DES101",
+        "semestre": "2",
+        "horarios": {
+            "seg": [
+                "08:00-10:00"
+            ],
+            "qua": [
+                "08:00-10:00"
+            ]
+        },
+        "vagas": 45,
+        "local": "",
+        "aberta": true
+    },
+    {
+        "id": "004",
+        "curso": "ALG01",
+        "semestre": "2026.2",
+        "horarios": {
+            "seg": [
+                "08:00-10:00"
+            ],
+            "qua": [
+                "08:00-10:00"
+            ]
+        },
+        "vagas": 45,
+        "local": "",
+        "aberta": true
+    }
+]

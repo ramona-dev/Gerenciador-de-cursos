@@ -1,0 +1,72 @@
+[
+    {
+        "codigo": "MAT101",
+        "nome": "Matemática",
+        "carga_horaria": 60,
+        "prerequisitos": []
+    },
+    {
+        "codigo": "ALG101",
+        "nome": "Algoritmos",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "MAT101"
+        ]
+    },
+    {
+        "codigo": "POO101",
+        "nome": "Programação Orientada a Objetos",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "ALG101"
+        ]
+    },
+    {
+        "codigo": "BD101",
+        "nome": "Banco de Dados",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "ALG101"
+        ]
+    },
+    {
+        "codigo": "ES101",
+        "nome": "Engenharia de Software",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "POO101"
+        ]
+    },
+    {
+        "codigo": "DES101",
+        "nome": "Design",
+        "carga_horaria": 60,
+        "prerequisitos": []
+    },
+    {
+        "codigo": "ALG01",
+        "nome": "Algoritmos I",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "ALG101"
+        ]
+    },
+    {
+        "codigo": "PORT01",
+        "nome": "Português",
+        "carga_horaria": 60,
+        "prerequisitos": []
+    },
+    {
+        "codigo": "098",
+        "nome": "0",
+        "carga_horaria": 90,
+        "prerequisitos": []
+    },
+    {
+        "codigo": "091",
+        "nome": "Geografia",
+        "carga_horaria": 80,
+        "prerequisitos": []
+    }
+]
