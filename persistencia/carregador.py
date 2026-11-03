@@ -14,6 +14,15 @@ def _exigir_lista(dados, arquivo):
     return dados
 
 
+def _exigir_registros(dados, arquivo):
+    for indice, registro in enumerate(dados, start=1):
+        if not isinstance(registro, dict):
+            raise ValueError(
+                f"O registro {indice} de dados/{arquivo}.json deve ser um objeto JSON."
+            )
+    return dados
+
+
 def _mapear_unico(itens, chave, descricao):
     resultado = {}
     for item in itens:
@@ -25,17 +34,34 @@ def _mapear_unico(itens, chave, descricao):
 
 
 def carregar_sistema():
-    cursos_json = _exigir_lista(JsonManager.carregar("dados/cursos.json"), "cursos")
-    alunos_json = _exigir_lista(JsonManager.carregar("dados/alunos.json"), "alunos")
-    turmas_json = _exigir_lista(JsonManager.carregar("dados/turmas.json"), "turmas")
-    matriculas_json = _exigir_lista(JsonManager.carregar("dados/matriculas.json"), "matriculas")
+    cursos_json = _exigir_registros(
+        _exigir_lista(JsonManager.carregar("dados/cursos.json"), "cursos"),
+        "cursos",
+    )
+    alunos_json = _exigir_registros(
+        _exigir_lista(JsonManager.carregar("dados/alunos.json"), "alunos"),
+        "alunos",
+    )
+    turmas_json = _exigir_registros(
+        _exigir_lista(JsonManager.carregar("dados/turmas.json"), "turmas"),
+        "turmas",
+    )
+    matriculas_json = _exigir_registros(
+        _exigir_lista(JsonManager.carregar("dados/matriculas.json"), "matriculas"),
+        "matriculas",
+    )
 
     cursos = [Curso.from_dict(item) for item in cursos_json]
-    cursos_por_codigo = _mapear_unico(cursos, lambda item: item.codigo, "código de curso")
+    cursos_por_codigo = _mapear_unico(
+        cursos, lambda item: item.codigo, "código de curso"
+    )
     catalogo = CatalogoCursos(cursos)
     catalogo.validar_referencias()
 
-    alunos = [Aluno.from_dict(item) for item in alunos_json]
+    alunos = [
+        Aluno.from_dict(item, codigos_cursos=cursos_por_codigo)
+        for item in alunos_json
+    ]
     alunos_por_matricula = _mapear_unico(
         alunos, lambda item: item.matricula, "matrícula de aluno"
     )
@@ -46,11 +72,21 @@ def carregar_sistema():
         curso = cursos_por_codigo.get(codigo_curso)
         if curso is None:
             raise ValueError(
-                f"A turma {registro.get('id', '?')} referencia o curso inexistente {codigo_curso!r}."
+                f"A turma {registro.get('id', '?')} referencia o curso "
+                f"inexistente {codigo_curso!r}."
             )
         turmas.append(Turma.from_dict(registro, curso))
 
     turmas_por_id = _mapear_unico(turmas, lambda item: item.id, "ID de turma")
+
+    for aluno in alunos:
+        for registro in aluno.historico:
+            id_turma = registro.get("turma")
+            if id_turma is not None and id_turma not in turmas_por_id:
+                raise ValueError(
+                    f"O histórico do aluno {aluno.matricula} referencia "
+                    f"a turma inexistente {id_turma}."
+                )
 
     matriculas = []
     pares_matricula = set()
@@ -65,15 +101,44 @@ def carregar_sistema():
             )
         if turma is None:
             raise ValueError(
-                f"Matrícula do aluno {matricula_aluno} referencia turma inexistente: {id_turma!r}."
+                f"Matrícula do aluno {matricula_aluno} referencia turma "
+                f"inexistente: {id_turma!r}."
             )
         par = (matricula_aluno, id_turma)
         if par in pares_matricula:
             raise ValueError(
-                f"Há mais de uma matrícula registrada para o aluno {matricula_aluno} na turma {id_turma}."
+                f"Há mais de uma matrícula registrada para o aluno "
+                f"{matricula_aluno} na turma {id_turma}."
             )
         pares_matricula.add(par)
         matriculas.append(Matricula.from_dict(registro, aluno, turma))
+
+    # Entradas de histórico vinculadas a uma turma precisam ter uma matrícula
+    # correspondente. Registros acadêmicos antigos sem o campo "turma" são
+    # preservados como histórico anterior ao controle de matrículas.
+    for aluno in alunos:
+        historico_por_turma = {
+            registro.get("turma"): registro
+            for registro in aluno.historico
+            if registro.get("turma") is not None
+        }
+        for id_turma, registro in historico_por_turma.items():
+            if (aluno.matricula, id_turma) not in pares_matricula:
+                raise ValueError(
+                    f"O histórico do aluno {aluno.matricula} possui resultado "
+                    f"sem matrícula correspondente na turma {id_turma}."
+                )
+
+        for matricula in matriculas:
+            if matricula.aluno is not aluno or not matricula.ativa:
+                continue
+            if (matricula.nota is None or matricula.frequencia is None):
+                if matricula.turma.id in historico_por_turma:
+                    raise ValueError(
+                        f"A matrícula ativa de {aluno.matricula} na turma "
+                        f"{matricula.turma.id} possui histórico concluído, mas "
+                        "a nota ou a frequência está ausente."
+                    )
 
     return {
         "cursos": cursos,

@@ -5,6 +5,7 @@ from modulos.curso import Curso
 from modulos.historico_academico import HistoricoAcademico
 from modulos.pessoa import Pessoa
 
+
 def test_criacao_aluno_valido():
     aluno = Aluno("2025001", "Maria", "maria@email.com")
     assert aluno.matricula == "2025001"
@@ -12,6 +13,18 @@ def test_criacao_aluno_valido():
     assert aluno.email == "maria@email.com"
     assert aluno.historico == []
     assert aluno.turmas == []
+
+
+def test_aluno_usa_heranca_multipla():
+    aluno = Aluno("2025001", "Maria", "maria@email.com")
+    assert isinstance(aluno, Pessoa)
+    assert isinstance(aluno, HistoricoAcademico)
+
+
+def test_aluno_possui_heranca_multipla():
+    mro = Aluno.__mro__
+    assert Pessoa in mro
+    assert HistoricoAcademico in mro
 
 
 def test_matricula_vazia_gera_erro():
@@ -61,18 +74,24 @@ def test_email_invalido_na_criacao():
     with pytest.raises(ValueError):
         Aluno("2025008", "Pedro", "email-invalido")
 
-def test_aluno_utiliza_heranca_multipla():
-    aluno = Aluno(
-        "2025010",
-        "João",
-        "joao@email.com"
-    )
 
-    assert isinstance(aluno, Pessoa)
-    assert isinstance(aluno, HistoricoAcademico)
+def test_from_dict_rejeita_nota_invalida_no_historico():
+    dados = {
+        "matricula": "2025010",
+        "nome": "João",
+        "email": "joao@email.com",
+        "historico": [{"curso": "MAT101", "nota": 11, "frequencia": 80}],
+    }
+    with pytest.raises(ValueError, match="Nota do histórico"):
+        Aluno.from_dict(dados)
 
-def test_aluno_possui_heranca_multipla():
-    mro = Aluno.__mro__
 
-    assert Pessoa in mro
-    assert HistoricoAcademico in mro
+def test_from_dict_rejeita_curso_inexistente_no_historico():
+    dados = {
+        "matricula": "2025011",
+        "nome": "João",
+        "email": "joao@email.com",
+        "historico": [{"curso": "MAT999", "nota": 8, "frequencia": 80}],
+    }
+    with pytest.raises(ValueError, match="curso inexistente"):
+        Aluno.from_dict(dados, codigos_cursos={"MAT101": object()})

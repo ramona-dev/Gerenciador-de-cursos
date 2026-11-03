@@ -1,5 +1,6 @@
 """Operações da interface de linha de comando."""
 
+import math
 import statistics
 
 import settings
@@ -7,7 +8,7 @@ from modulos.aluno import Aluno
 from modulos.curso import Curso
 from modulos.catalogo_cursos import CatalogoCursos
 from modulos.matricula import Matricula
-from modulos.turma import Turma, normalizar_dias
+from modulos.turma import Turma, normalizar_dias, parse_horario
 from persistencia.json_manager import JsonManager
 
 
@@ -19,31 +20,67 @@ def pausar():
     input("\nPressione Enter para continuar...")
 
 
+def _ler_texto(mensagem, validador=None):
+    """Lê texto e repete a pergunta até que a validação seja satisfeita."""
+    while True:
+        valor = input(mensagem).strip()
+        try:
+            return validador(valor) if validador else valor
+        except (ValueError, TypeError) as erro:
+            print(f"\nErro: {erro} Tente novamente.")
+
+
 def ler_int(mensagem, minimo=None):
     while True:
         try:
-            valor = int(input(mensagem))
+            valor = int(input(mensagem).strip())
             if minimo is not None and valor < minimo:
                 print(f"\nErro: informe um valor maior ou igual a {minimo}.")
                 continue
             return valor
         except ValueError:
-            print("\nErro: digite um número inteiro válido.")
+            print("\nErro: digite um número inteiro válido. Tente novamente.")
 
 
 def ler_float(mensagem, minimo=None, maximo=None):
     while True:
         try:
-            valor = float(input(mensagem).replace(",", "."))
+            valor = float(input(mensagem).replace(",", ".").strip())
+            if not math.isfinite(valor):
+                raise ValueError
             if minimo is not None and valor < minimo:
-                print(f"\nErro: o valor mínimo é {minimo}.")
+                print(f"\nErro: o valor mínimo é {minimo}. Tente novamente.")
                 continue
             if maximo is not None and valor > maximo:
-                print(f"\nErro: o valor máximo é {maximo}.")
+                print(f"\nErro: o valor máximo é {maximo}. Tente novamente.")
                 continue
             return valor
         except ValueError:
-            print("\nErro: digite um número válido.")
+            print("\nErro: digite um número válido dentro do intervalo permitido.")
+
+
+def _confirmar_retentativa():
+    while True:
+        opcao = input("\n1 - Tentar novamente | 0 - Voltar ao menu: ").strip()
+        if opcao == "1":
+            return True
+        if opcao == "0":
+            return False
+        print("Opção inválida. Digite 1 para tentar novamente ou 0 para voltar.")
+
+
+def _executar_com_retentativa(acao, mensagem_sucesso):
+    """Executa uma operação e oferece nova tentativa quando há erro de validação."""
+    while True:
+        try:
+            acao()
+            print(f"\n{mensagem_sucesso}")
+            break
+        except (ValueError, TypeError, KeyError, OSError) as erro:
+            print(f"\nErro: {erro}")
+            if not _confirmar_retentativa():
+                break
+    pausar()
 
 
 def salvar_cursos(dados):
@@ -68,6 +105,12 @@ def salvar_matriculas(dados):
         "dados/matriculas.json",
         [matricula.to_dict() for matricula in dados["matriculas"]],
     )
+
+
+def salvar_resultados_academicos(dados):
+    """Persiste matrícula e histórico quando uma disciplina é concluída/trancada."""
+    salvar_matriculas(dados)
+    salvar_alunos(dados)
 
 
 def _buscar_curso(dados, codigo):
@@ -97,13 +140,84 @@ def _buscar_matricula(dados, matricula_aluno, id_turma):
     )
 
 
-def _erro_ou_sucesso(acao, mensagem_sucesso):
-    try:
-        acao()
-        print(f"\n{mensagem_sucesso}")
-    except (ValueError, TypeError, KeyError) as erro:
-        print(f"\nErro: {erro}")
-    pausar()
+def _validar_codigo_curso(valor):
+    codigo = valor.strip().upper()
+    if len(codigo) < 3:
+        raise ValueError("Código do curso deve possuir pelo menos 3 caracteres.")
+    return codigo
+
+
+def _ler_codigo_curso(dados, mensagem="Código do curso: ", existente=None):
+    def validar(valor):
+        codigo = _validar_codigo_curso(valor)
+        curso = _buscar_curso(dados, codigo)
+        if existente is True and curso is None:
+            raise ValueError("Curso não encontrado. Informe um código cadastrado.")
+        if existente is False and curso is not None:
+            raise ValueError("Código de curso já cadastrado. Informe outro código.")
+        return codigo
+    return _ler_texto(mensagem, validar)
+
+
+def _ler_matricula_aluno(dados, mensagem="Matrícula do aluno: "):
+    def validar(valor):
+        if not valor:
+            raise ValueError("Matrícula do aluno não pode ser vazia.")
+        if _buscar_aluno(dados, valor) is None:
+            raise ValueError("Aluno não encontrado. Informe uma matrícula cadastrada.")
+        return valor
+    return _ler_texto(mensagem, validar)
+
+
+def _ler_id_turma(dados, mensagem="ID da turma: ", existente=None):
+    def validar(valor):
+        if not valor:
+            raise ValueError("ID da turma não pode ser vazio.")
+        identificador = valor.upper()
+        turma = _buscar_turma(dados, identificador)
+        if existente is True and turma is None:
+            raise ValueError("Turma não encontrada. Informe um ID cadastrado.")
+        if existente is False and turma is not None:
+            raise ValueError("Já existe uma turma com esse ID. Informe outro ID.")
+        return identificador
+    return _ler_texto(mensagem, validar)
+
+
+def _ler_nome(mensagem="Nome: "):
+    def validar(valor):
+        if not valor:
+            raise ValueError("Nome não pode ser vazio.")
+        return valor
+    return _ler_texto(mensagem, validar)
+
+
+def _ler_email(mensagem="Email: "):
+    def validar(valor):
+        if "@" not in valor:
+            raise ValueError("Email inválido. Informe um endereço que contenha @.")
+        return valor
+    return _ler_texto(mensagem, validar)
+
+
+def _ler_matricula_existente(dados, exige_ativa=False):
+    matricula_aluno = _ler_matricula_aluno(dados)
+    id_turma = _ler_id_turma(dados, existente=True)
+    item = _buscar_matricula(dados, matricula_aluno, id_turma)
+    if item is None:
+        raise ValueError("Não existe matrícula desse aluno na turma informada.")
+    if exige_ativa and not item.ativa:
+        raise ValueError("A matrícula está trancada e não aceita novos lançamentos.")
+    return item
+
+
+def _normalizar_horario(valor):
+    inicio, fim = parse_horario(valor)
+    hora_inicio, minuto_inicio = divmod(inicio, 60)
+    hora_fim, minuto_fim = divmod(fim, 60)
+    return (
+        f"{hora_inicio:02d}:{minuto_inicio:02d}-"
+        f"{hora_fim:02d}:{minuto_fim:02d}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -111,61 +225,56 @@ def _erro_ou_sucesso(acao, mensagem_sucesso):
 # ---------------------------------------------------------------------------
 
 def cadastrar_curso(dados):
-    print("\n=== CADASTRAR CURSO ===")
-    codigo = input("Código: ").strip().upper()
-    nome = input("Nome: ").strip()
-    carga_horaria = ler_int("Carga horária (horas): ", minimo=1)
-
     def acao():
+        codigo = _ler_codigo_curso(dados, "Código: ", existente=False)
+        nome = _ler_nome()
+        carga_horaria = ler_int("Carga horária (horas): ", minimo=1)
         curso = Curso(codigo, nome, carga_horaria)
-        catalogo = CatalogoCursos(dados["cursos"])
-        catalogo.adicionar_curso(curso)
+        CatalogoCursos(dados["cursos"]).adicionar_curso(curso)
         dados["cursos"].append(curso)
         salvar_cursos(dados)
-
-    _erro_ou_sucesso(acao, "Curso cadastrado com sucesso.")
+    _executar_com_retentativa(acao, "Curso cadastrado com sucesso.")
 
 
 def editar_curso(dados):
-    codigo = input("Código do curso que deseja editar: ").strip().upper()
-    curso = _buscar_curso(dados, codigo)
-    if curso is None:
-        print("\nCurso não encontrado.")
-        pausar()
-        return
-
-    novo_nome = input(f"Novo nome [{curso.nome}] (Enter mantém): ").strip()
-    nova_carga = input(
-        f"Nova carga horária [{curso.carga_horaria}] (Enter mantém): "
-    ).strip()
-
-    try:
+    def acao():
+        codigo = _ler_codigo_curso(dados, "Código do curso que deseja editar: ", True)
+        curso = _buscar_curso(dados, codigo)
+        novo_nome = input(f"Novo nome [{curso.nome}] (Enter mantém): ").strip()
+        nova_carga = input(
+            f"Nova carga horária [{curso.carga_horaria}] (Enter mantém): "
+        ).strip()
         nome_validado = novo_nome or curso.nome
-        carga_validada = int(nova_carga) if nova_carga else curso.carga_horaria
+        if nova_carga:
+            carga_validada = ler_int_opcional(nova_carga, "Carga horária", 1)
+        else:
+            carga_validada = curso.carga_horaria
         curso_validado = Curso(
-            curso.codigo,
-            nome_validado,
-            carga_validada,
-            curso.prerequisitos,
+            curso.codigo, nome_validado, carga_validada, curso.prerequisitos
         )
         curso.nome = curso_validado.nome
         curso.carga_horaria = curso_validado.carga_horaria
         salvar_cursos(dados)
-        print("\nCurso atualizado.")
-    except (ValueError, TypeError) as erro:
-        print(f"\nErro: {erro}")
-    pausar()
+    _executar_com_retentativa(acao, "Curso atualizado.")
+
+
+def ler_int_opcional(valor, campo, minimo=None):
+    while True:
+        try:
+            numero = int(valor)
+            if minimo is not None and numero < minimo:
+                raise ValueError
+            return numero
+        except ValueError:
+            print(f"Erro: {campo} deve ser um número inteiro maior ou igual a {minimo}.")
+            valor = input(f"Informe novamente {campo}: ").strip()
 
 
 def remover_curso(dados):
-    codigo = input("Código do curso: ").strip().upper()
-
     def acao():
-        if _buscar_curso(dados, codigo) is None:
-            raise ValueError("Curso não encontrado.")
+        codigo = _ler_codigo_curso(dados, "Código do curso: ", True)
         turmas_vinculadas = [
-            turma.id for turma in dados["turmas"]
-            if turma.curso.codigo == codigo
+            turma.id for turma in dados["turmas"] if turma.curso.codigo == codigo
         ]
         if turmas_vinculadas:
             raise ValueError(
@@ -181,40 +290,31 @@ def remover_curso(dados):
                 "Não é possível remover: o curso aparece no histórico dos alunos ("
                 + ", ".join(alunos_com_historico) + ")."
             )
-        catalogo = CatalogoCursos(dados["cursos"])
-        catalogo.remover_curso(codigo)
+        CatalogoCursos(dados["cursos"]).remover_curso(codigo)
         dados["cursos"] = [curso for curso in dados["cursos"] if curso.codigo != codigo]
         salvar_cursos(dados)
-
-    _erro_ou_sucesso(acao, "Curso removido.")
+    _executar_com_retentativa(acao, "Curso removido.")
 
 
 def adicionar_prerequisito(dados):
-    codigo_curso = input("Código do curso: ").strip().upper()
-    codigo_pre = input("Código do pré-requisito: ").strip().upper()
-
     def acao():
-        catalogo = CatalogoCursos(dados["cursos"])
-        catalogo.adicionar_prerequisito(codigo_curso, codigo_pre)
+        codigo_curso = _ler_codigo_curso(dados, "Código do curso: ", True)
+        codigo_pre = _ler_codigo_curso(dados, "Código do pré-requisito: ", True)
+        CatalogoCursos(dados["cursos"]).adicionar_prerequisito(
+            codigo_curso, codigo_pre
+        )
         salvar_cursos(dados)
-
-    _erro_ou_sucesso(acao, "Pré-requisito adicionado.")
+    _executar_com_retentativa(acao, "Pré-requisito adicionado.")
 
 
 def remover_prerequisito(dados):
-    codigo_curso = input("Código do curso: ").strip().upper()
-    codigo_pre = input("Código do pré-requisito: ").strip().upper()
-    curso = _buscar_curso(dados, codigo_curso)
-    if curso is None:
-        print("\nCurso não encontrado.")
-    else:
-        try:
-            curso.remover_prerequisito(codigo_pre)
-            salvar_cursos(dados)
-            print("\nPré-requisito removido.")
-        except ValueError as erro:
-            print(f"\nErro: {erro}")
-    pausar()
+    def acao():
+        codigo_curso = _ler_codigo_curso(dados, "Código do curso: ", True)
+        codigo_pre = _ler_codigo_curso(dados, "Código do pré-requisito: ", True)
+        curso = _buscar_curso(dados, codigo_curso)
+        curso.remover_prerequisito(codigo_pre)
+        salvar_cursos(dados)
+    _executar_com_retentativa(acao, "Pré-requisito removido.")
 
 
 def listar_cursos(dados):
@@ -232,31 +332,29 @@ def listar_cursos(dados):
 # ---------------------------------------------------------------------------
 
 def cadastrar_aluno(dados):
-    matricula = input("Matrícula: ").strip()
-    nome = input("Nome: ").strip()
-    email = input("Email: ").strip()
-
     def acao():
-        if _buscar_aluno(dados, matricula) is not None:
-            raise ValueError("Matrícula já cadastrada.")
+        def validar_matricula(valor):
+            if not valor:
+                raise ValueError("Matrícula não pode ser vazia.")
+            if _buscar_aluno(dados, valor) is not None:
+                raise ValueError("Matrícula já cadastrada. Informe outra matrícula.")
+            return valor
+
+        matricula = _ler_texto("Matrícula: ", validar_matricula)
+        nome = _ler_nome()
+        email = _ler_email()
         aluno = Aluno(matricula, nome, email)
         dados["alunos"].append(aluno)
         salvar_alunos(dados)
-
-    _erro_ou_sucesso(acao, "Aluno cadastrado.")
+    _executar_com_retentativa(acao, "Aluno cadastrado.")
 
 
 def editar_aluno(dados):
-    matricula = input("Matrícula do aluno que deseja editar: ").strip()
-    aluno = _buscar_aluno(dados, matricula)
-    if aluno is None:
-        print("\nAluno não encontrado.")
-        pausar()
-        return
-
-    novo_nome = input(f"Novo nome [{aluno.nome}] (Enter mantém): ").strip()
-    novo_email = input(f"Novo email [{aluno.email}] (Enter mantém): ").strip()
-    try:
+    def acao():
+        matricula = _ler_matricula_aluno(dados, "Matrícula do aluno que deseja editar: ")
+        aluno = _buscar_aluno(dados, matricula)
+        novo_nome = input(f"Novo nome [{aluno.nome}] (Enter mantém): ").strip()
+        novo_email = input(f"Novo email [{aluno.email}] (Enter mantém): ").strip()
         aluno_validado = Aluno(
             aluno.matricula,
             novo_nome or aluno.nome,
@@ -265,19 +363,13 @@ def editar_aluno(dados):
         aluno.nome = aluno_validado.nome
         aluno.email = aluno_validado.email
         salvar_alunos(dados)
-        print("\nAluno atualizado.")
-    except (ValueError, TypeError) as erro:
-        print(f"\nErro: {erro}")
-    pausar()
+    _executar_com_retentativa(acao, "Aluno atualizado.")
 
 
 def remover_aluno(dados):
-    matricula = input("Matrícula do aluno: ").strip()
-
     def acao():
+        matricula = _ler_matricula_aluno(dados)
         aluno = _buscar_aluno(dados, matricula)
-        if aluno is None:
-            raise ValueError("Aluno não encontrado.")
         possui_registros = any(
             item.aluno.matricula == matricula for item in dados["matriculas"]
         )
@@ -287,8 +379,7 @@ def remover_aluno(dados):
             )
         dados["alunos"].remove(aluno)
         salvar_alunos(dados)
-
-    _erro_ou_sucesso(acao, "Aluno removido.")
+    _executar_com_retentativa(acao, "Aluno removido.")
 
 
 def listar_alunos(dados):
@@ -305,77 +396,56 @@ def listar_alunos(dados):
 # ---------------------------------------------------------------------------
 
 def criar_turma(dados):
-    print("\n=== CRIAR TURMA ===")
-    codigo_curso = input("Código do curso: ").strip().upper()
-    curso = _buscar_curso(dados, codigo_curso)
-    if curso is None:
-        print("\nCurso não encontrado.")
-        pausar()
-        return
-
-    id_turma = input("ID único da turma: ").strip().upper()
-    if _buscar_turma(dados, id_turma) is not None:
-        print("\nErro: já existe uma turma com esse ID. Informe um ID diferente.")
-        pausar()
-        return
-
-    semestre = input("Semestre (ex.: 2026.2): ").strip()
-    dias_digitados = input("Dias (ex.: seg qua ou seg,qua): ").strip()
-    horario = input("Horário (ex.: 08:00-10:00): ").strip()
-    vagas = ler_int("Vagas: ", minimo=1)
-    local = input("Local (opcional): ").strip()
-
-    try:
-        dias = normalizar_dias(dias_digitados)
+    def acao():
+        codigo_curso = _ler_codigo_curso(dados, existente=True)
+        curso = _buscar_curso(dados, codigo_curso)
+        id_turma = _ler_id_turma(dados, "ID único da turma: ", existente=False)
+        semestre = _ler_texto(
+            "Semestre (ex.: 2026.2): ",
+            lambda valor: valor if valor else (_ for _ in ()).throw(
+                ValueError("Semestre não pode ser vazio.")
+            ),
+        )
+        dias = _ler_texto(
+            "Dias (ex.: seg qua ou seg,qua): ", normalizar_dias
+        )
+        horario = _ler_texto("Horário (ex.: 08:00-10:00): ", _normalizar_horario)
+        vagas = ler_int("Vagas: ", minimo=1)
+        local = input("Local (opcional): ").strip()
         dias_horarios = {dia: horario for dia in dias}
         turma = Turma(curso, id_turma, semestre, dias_horarios, vagas, local)
         dados["turmas"].append(turma)
         salvar_turmas(dados)
-        print("\nTurma criada com sucesso.")
-    except (ValueError, TypeError) as erro:
-        print(f"\nErro: {erro}")
-    pausar()
+    _executar_com_retentativa(acao, "Turma criada com sucesso.")
 
 
 def remover_turma(dados):
-    id_turma = input("ID da turma: ").strip().upper()
-
     def acao():
+        id_turma = _ler_id_turma(dados, existente=True)
         turma = _buscar_turma(dados, id_turma)
-        if turma is None:
-            raise ValueError("Turma não encontrada.")
         if any(item.turma.id == id_turma for item in dados["matriculas"]):
             raise ValueError(
                 "Não é possível remover: a turma possui matrículas no histórico."
             )
         dados["turmas"].remove(turma)
         salvar_turmas(dados)
-
-    _erro_ou_sucesso(acao, "Turma removida.")
+    _executar_com_retentativa(acao, "Turma removida.")
 
 
 def abrir_turma(dados):
-    id_turma = input("ID da turma: ").strip().upper()
-    turma = _buscar_turma(dados, id_turma)
-    if turma is None:
-        print("\nTurma não encontrada.")
-    else:
-        turma.abrir()
+    def acao():
+        id_turma = _ler_id_turma(dados, existente=True)
+        _buscar_turma(dados, id_turma).abrir()
         salvar_turmas(dados)
-        print("\nTurma aberta.")
-    pausar()
+    _executar_com_retentativa(acao, "Turma aberta.")
 
 
 def fechar_turma(dados):
-    id_turma = input("ID da turma: ").strip().upper()
-    turma = _buscar_turma(dados, id_turma)
-    if turma is None:
-        print("\nTurma não encontrada.")
-    else:
-        turma.fechar()
+    def acao():
+        id_turma = _ler_id_turma(dados, existente=True)
+        _buscar_turma(dados, id_turma).fechar()
         salvar_turmas(dados)
-        print("\nTurma fechada.")
-    pausar()
+    _executar_com_retentativa(acao, "Turma fechada.")
 
 
 def listar_turmas(dados):
@@ -397,84 +467,47 @@ def listar_turmas(dados):
 # ---------------------------------------------------------------------------
 
 def matricular_aluno(dados):
-    matricula_aluno = input("Matrícula do aluno: ").strip()
-    id_turma = input("ID da turma: ").strip().upper()
-    aluno = _buscar_aluno(dados, matricula_aluno)
-    turma = _buscar_turma(dados, id_turma)
-
-    if aluno is None:
-        print("\nAluno não encontrado.")
-        pausar()
-        return
-    if turma is None:
-        print("\nTurma não encontrada.")
-        pausar()
-        return
-    if _buscar_matricula(dados, matricula_aluno, id_turma) is not None:
-        print("\nErro: já existe um registro de matrícula para esse aluno e turma.")
-        pausar()
-        return
-
-    try:
+    def acao():
+        matricula_aluno = _ler_matricula_aluno(dados)
+        id_turma = _ler_id_turma(dados, existente=True)
+        if _buscar_matricula(dados, matricula_aluno, id_turma) is not None:
+            raise ValueError(
+                "Já existe um registro de matrícula para esse aluno e turma."
+            )
+        aluno = _buscar_aluno(dados, matricula_aluno)
+        turma = _buscar_turma(dados, id_turma)
         matricula = Matricula(aluno, turma)
         dados["matriculas"].append(matricula)
         salvar_matriculas(dados)
-        print("\nMatrícula realizada com sucesso.")
-    except (ValueError, TypeError) as erro:
-        print(f"\nErro: {erro}")
-    pausar()
+    _executar_com_retentativa(acao, "Matrícula realizada com sucesso.")
 
 
 def lancar_nota(dados):
-    matricula_aluno = input("Matrícula do aluno: ").strip()
-    id_turma = input("ID da turma: ").strip().upper()
-    item = _buscar_matricula(dados, matricula_aluno, id_turma)
-    if item is None:
-        print("\nMatrícula não encontrada.")
-        pausar()
-        return
-    nota = ler_float("Nota (0 a 10): ", minimo=0, maximo=10)
-    try:
+    def acao():
+        item = _ler_matricula_existente(dados, exige_ativa=True)
+        nota = ler_float("Nota (0 a 10): ", minimo=0, maximo=10)
         item.lancar_nota(nota)
-        salvar_matriculas(dados)
-        print("\nNota lançada.")
-    except ValueError as erro:
-        print(f"\nErro: {erro}")
-    pausar()
+        salvar_resultados_academicos(dados)
+    _executar_com_retentativa(acao, "Nota lançada.")
 
 
 def lancar_frequencia(dados):
-    matricula_aluno = input("Matrícula do aluno: ").strip()
-    id_turma = input("ID da turma: ").strip().upper()
-    item = _buscar_matricula(dados, matricula_aluno, id_turma)
-    if item is None:
-        print("\nMatrícula não encontrada.")
-        pausar()
-        return
-    frequencia = ler_float("Frequência (0 a 100): ", minimo=0, maximo=100)
-    try:
+    def acao():
+        item = _ler_matricula_existente(dados, exige_ativa=True)
+        frequencia = ler_float(
+            "Frequência (0 a 100): ", minimo=0, maximo=100
+        )
         item.lancar_frequencia(frequencia)
-        salvar_matriculas(dados)
-        print("\nFrequência lançada.")
-    except ValueError as erro:
-        print(f"\nErro: {erro}")
-    pausar()
+        salvar_resultados_academicos(dados)
+    _executar_com_retentativa(acao, "Frequência lançada.")
 
 
 def trancar_matricula(dados):
-    matricula_aluno = input("Matrícula do aluno: ").strip()
-    id_turma = input("ID da turma: ").strip().upper()
-    item = _buscar_matricula(dados, matricula_aluno, id_turma)
-    if item is None:
-        print("\nMatrícula não encontrada.")
-    else:
-        try:
-            item.trancar(settings.obter_configuracoes())
-            salvar_matriculas(dados)
-            print("\nMatrícula trancada.")
-        except ValueError as erro:
-            print(f"\nErro: {erro}")
-    pausar()
+    def acao():
+        item = _ler_matricula_existente(dados)
+        item.trancar(settings.obter_configuracoes())
+        salvar_resultados_academicos(dados)
+    _executar_com_retentativa(acao, "Matrícula trancada.")
 
 
 def listar_matriculas(dados):
@@ -523,11 +556,16 @@ def relatorio_taxa_aprovacao(dados):
         concluidas = [
             item for item in dados["matriculas"]
             if item.turma.id == turma.id
-            and item.situacao() in {"APROVADO", "REPROVADO_POR_NOTA", "REPROVADO_POR_FREQUENCIA"}
+            and item.situacao() in {
+                "APROVADO", "REPROVADO_POR_NOTA", "REPROVADO_POR_FREQUENCIA"
+            }
         ]
         aprovados = sum(1 for item in concluidas if item.situacao() == "APROVADO")
         taxa = (aprovados / len(concluidas) * 100) if concluidas else 0.0
-        print(f"{turma.id} - {turma.curso.nome}: {taxa:.2f}% ({aprovados}/{len(concluidas)})")
+        print(
+            f"{turma.id} - {turma.curso.nome}: "
+            f"{taxa:.2f}% ({aprovados}/{len(concluidas)})"
+        )
     pausar()
 
 
@@ -557,7 +595,10 @@ def relatorio_alunos_em_risco(dados):
         item for item in dados["matriculas"]
         if item.ativa and (
             (item.nota is not None and item.nota < settings.nota_minima_aprovacao)
-            or (item.frequencia is not None and item.frequencia < settings.frequencia_minima)
+            or (
+                item.frequencia is not None
+                and item.frequencia < settings.frequencia_minima
+            )
         )
     ]
     if not encontrados:

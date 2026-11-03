@@ -169,13 +169,25 @@ class Turma(Oferta):
 
     @classmethod
     def from_dict(cls, dados: dict, curso):
+        if not isinstance(dados, dict):
+            raise ValueError("Registro de turma deve ser um objeto JSON.")
+        aberta = dados.get("aberta", True)
+        if not isinstance(aberta, bool):
+            raise ValueError(
+                f"Situação de abertura da turma {dados.get('id', '?')} deve ser booleana."
+            )
+        vagas = dados.get("vagas")
+        if isinstance(vagas, bool) or not isinstance(vagas, int):
+            raise ValueError(
+                f"Número de vagas da turma {dados.get('id', '?')} deve ser inteiro."
+            )
         turma = cls(
             curso=curso,
             id_turma=dados["id"],
             semestre=dados["semestre"],
             dias_horarios=dados["horarios"],
-            vagas=int(dados["vagas"]),
+            vagas=vagas,
             local=dados.get("local", ""),
         )
-        turma._aberta = bool(dados.get("aberta", True))
+        turma._aberta = aberta
         return turma

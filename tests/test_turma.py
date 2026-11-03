@@ -103,3 +103,11 @@ def test_rejeita_id_turma_vazio():
     curso = Curso("POO101", "POO", 60)
     with pytest.raises(ValueError, match="ID"):
         Turma(curso, "  ", "2025.2", {"seg": "08:00-10:00"}, 10)
+
+
+def test_from_dict_rejeita_aberta_como_texto():
+    curso = Curso("POO101", "POO", 60)
+    dados = {"id": "T1", "semestre": "2025.2", "horarios": {"seg": "08:00-10:00"},
+             "vagas": 10, "aberta": "false"}
+    with pytest.raises(ValueError, match="booleana"):
+        Turma.from_dict(dados, curso)

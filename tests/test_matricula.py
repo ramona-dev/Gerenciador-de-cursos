@@ -46,6 +46,41 @@ def test_lancar_frequencia_valida_e_invalida():
         matricula.lancar_frequencia(120)
 
 
+def test_conclusao_sincroniza_historico_cr_e_prerequisito():
+    aluno, turma = setup_aluno_e_turma()
+    matricula = Matricula(aluno, turma)
+    matricula.lancar_nota(8.0)
+    assert aluno.historico == []
+    matricula.lancar_frequencia(90)
+    assert len(aluno.historico) == 1
+    assert aluno.historico[0]["curso"] == "POO101"
+    assert aluno.historico[0]["turma"] == "T1"
+    assert aluno.cr == pytest.approx(8.0)
+    assert aluno.aprovado_em("POO101")
+
+
+def test_atualizar_nota_nao_duplica_historico():
+    aluno, turma = setup_aluno_e_turma()
+    matricula = Matricula(aluno, turma)
+    matricula.lancar_nota(7.0)
+    matricula.lancar_frequencia(80)
+    matricula.lancar_nota(9.0)
+    assert len(aluno.historico) == 1
+    assert aluno.historico[0]["nota"] == pytest.approx(9.0)
+
+
+def test_trancar_remove_resultado_da_matricula_do_historico():
+    aluno, turma = setup_aluno_e_turma()
+    matricula = Matricula(aluno, turma)
+    matricula.lancar_nota(8.0)
+    matricula.lancar_frequencia(90)
+    matricula.trancar(settings.obter_configuracoes())
+    assert aluno.historico == []
+    assert not aluno.aprovado_em("POO101")
+    assert turma not in aluno.turmas
+    assert len(turma) == 0
+
+
 def test_trancar_respeitando_data_limite():
     aluno, turma = setup_aluno_e_turma()
     matricula = Matricula(aluno, turma)
@@ -100,6 +135,22 @@ def test_from_dict_nao_reativa_turma_de_matricula_trancada():
     assert turma not in aluno.turmas
     assert len(turma) == 0
     assert matricula in turma.matriculas
+
+
+def test_from_dict_rejeita_ativa_como_texto():
+    aluno, turma = setup_aluno_e_turma()
+    dados = {"ativa": "false", "nota": None, "frequencia": None,
+             "data": date.today().isoformat()}
+    with pytest.raises(ValueError, match="booleano"):
+        Matricula.from_dict(dados, aluno, turma)
+
+
+def test_from_dict_normaliza_e_rejeita_valor_string_de_nota():
+    aluno, turma = setup_aluno_e_turma()
+    dados = {"ativa": True, "nota": "8.5", "frequencia": 90,
+             "data": date.today().isoformat()}
+    with pytest.raises(ValueError, match="numérico"):
+        Matricula.from_dict(dados, aluno, turma)
 
 
 def test_nao_permite_trancar_duas_vezes():
