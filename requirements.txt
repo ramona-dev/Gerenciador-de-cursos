@@ -1,0 +1,3 @@
+# Dependência de execução: biblioteca padrão do Python.
+# Dependência para executar a suíte de testes:
+pytest>=8.0
