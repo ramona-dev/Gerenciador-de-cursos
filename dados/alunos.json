@@ -7,12 +7,18 @@
             {
                 "curso": "MAT101",
                 "nota": 8.5,
-                "frequencia": 90
+                "frequencia": 90.0
             },
             {
                 "curso": "ALG101",
                 "nota": 9.0,
-                "frequencia": 95
+                "frequencia": 95.0
+            },
+            {
+                "curso": "POO101",
+                "nota": 9.0,
+                "frequencia": 95.0,
+                "turma": "TPOO1"
             }
         ]
     },
@@ -24,12 +30,18 @@
             {
                 "curso": "MAT101",
                 "nota": 7.0,
-                "frequencia": 85
+                "frequencia": 85.0
             },
             {
                 "curso": "ALG101",
                 "nota": 7.5,
-                "frequencia": 80
+                "frequencia": 80.0
+            },
+            {
+                "curso": "POO101",
+                "nota": 7.0,
+                "frequencia": 80.0,
+                "turma": "TPOO1"
             }
         ]
     },
@@ -47,7 +59,7 @@
             {
                 "curso": "MAT101",
                 "nota": 5.0,
-                "frequencia": 90
+                "frequencia": 90.0
             }
         ]
     },
@@ -59,12 +71,12 @@
             {
                 "curso": "MAT101",
                 "nota": 8.0,
-                "frequencia": 90
+                "frequencia": 90.0
             },
             {
                 "curso": "ALG101",
                 "nota": 7.0,
-                "frequencia": 80
+                "frequencia": 80.0
             }
         ]
     },
@@ -76,13 +88,31 @@
             {
                 "curso": "MAT101",
                 "nota": 7.5,
-                "frequencia": 85
+                "frequencia": 85.0
             },
             {
                 "curso": "ALG101",
                 "nota": 6.5,
-                "frequencia": 75
+                "frequencia": 75.0
+            },
+            {
+                "curso": "BD101",
+                "nota": 4.0,
+                "frequencia": 85.0,
+                "turma": "TBD1"
             }
         ]
+    },
+    {
+        "matricula": "2026001",
+        "nome": "Ramona Vitória",
+        "email": "ramona@gmail.com",
+        "historico": []
+    },
+    {
+        "matricula": "2026003",
+        "nome": "Vitoria",
+        "email": "vitoria@gmail.com",
+        "historico": []
     }
 ]
