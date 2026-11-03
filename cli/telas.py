@@ -1,936 +1,570 @@
+"""Operações da interface de linha de comando."""
+
 import statistics
+
 import settings
-from modulos.curso import Curso
 from modulos.aluno import Aluno
-from modulos.turma import Turma
-from modulos.matricula import Matricula
+from modulos.curso import Curso
 from modulos.catalogo_cursos import CatalogoCursos
+from modulos.matricula import Matricula
+from modulos.turma import Turma, normalizar_dias
 from persistencia.json_manager import JsonManager
 
+
+# ---------------------------------------------------------------------------
+# Utilidades e persistência
+# ---------------------------------------------------------------------------
 
 def pausar():
     input("\nPressione Enter para continuar...")
 
 
-def ler_int(mensagem):
+def ler_int(mensagem, minimo=None):
     while True:
         try:
-            return int(input(mensagem))
+            valor = int(input(mensagem))
+            if minimo is not None and valor < minimo:
+                print(f"\nErro: informe um valor maior ou igual a {minimo}.")
+                continue
+            return valor
         except ValueError:
             print("\nErro: digite um número inteiro válido.")
 
 
-def ler_float(mensagem):
+def ler_float(mensagem, minimo=None, maximo=None):
     while True:
         try:
-            return float(input(mensagem))
+            valor = float(input(mensagem).replace(",", "."))
+            if minimo is not None and valor < minimo:
+                print(f"\nErro: o valor mínimo é {minimo}.")
+                continue
+            if maximo is not None and valor > maximo:
+                print(f"\nErro: o valor máximo é {maximo}.")
+                continue
+            return valor
         except ValueError:
             print("\nErro: digite um número válido.")
 
-# Persistencia 
+
 def salvar_cursos(dados):
+    JsonManager.salvar("dados/cursos.json", [curso.to_dict() for curso in dados["cursos"]])
+    dados["cursos_por_codigo"] = {curso.codigo: curso for curso in dados["cursos"]}
 
-    JsonManager.salvar(
-        "dados/cursos.json",
-        [
-            curso.to_dict()
-            for curso in dados["cursos"]
-        ]
-    )
+
 def salvar_alunos(dados):
+    JsonManager.salvar("dados/alunos.json", [aluno.to_dict() for aluno in dados["alunos"]])
+    dados["alunos_por_matricula"] = {
+        aluno.matricula: aluno for aluno in dados["alunos"]
+    }
 
-    JsonManager.salvar(
-        "dados/alunos.json",
-        [
-            aluno.to_dict()
-            for aluno in dados["alunos"]
-        ]
-    )
+
 def salvar_turmas(dados):
+    JsonManager.salvar("dados/turmas.json", [turma.to_dict() for turma in dados["turmas"]])
+    dados["turmas_por_id"] = {turma.id: turma for turma in dados["turmas"]}
 
-    JsonManager.salvar(
-        "dados/turmas.json",
-        [
-            turma.to_dict()
-            for turma in dados["turmas"]
-        ]
-    )
+
 def salvar_matriculas(dados):
-
     JsonManager.salvar(
         "dados/matriculas.json",
-        [
-            matricula.to_dict()
-            for matricula in dados["matriculas"]
-        ]
+        [matricula.to_dict() for matricula in dados["matriculas"]],
     )
 
-    # CURSO 
-def cadastrar_curso(dados):
 
-    print("\n=== CADASTRAR CURSO ===")
+def _buscar_curso(dados, codigo):
+    codigo = str(codigo).strip().upper()
+    return next((curso for curso in dados["cursos"] if curso.codigo == codigo), None)
 
-    codigo = input(
-        "Código: "
-    ).strip().upper()
 
-    nome = input(
-        "Nome: "
-    ).strip()
+def _buscar_aluno(dados, matricula):
+    matricula = str(matricula).strip()
+    return next((aluno for aluno in dados["alunos"] if aluno.matricula == matricula), None)
 
-    carga_horaria = ler_int(
-        "Carga horária: "
+
+def _buscar_turma(dados, id_turma):
+    id_turma = str(id_turma).strip().upper()
+    return next((turma for turma in dados["turmas"] if turma.id == id_turma), None)
+
+
+def _buscar_matricula(dados, matricula_aluno, id_turma):
+    matricula_aluno = str(matricula_aluno).strip()
+    id_turma = str(id_turma).strip().upper()
+    return next(
+        (
+            item for item in dados["matriculas"]
+            if item.aluno.matricula == matricula_aluno and item.turma.id == id_turma
+        ),
+        None,
     )
 
+
+def _erro_ou_sucesso(acao, mensagem_sucesso):
     try:
-
-        curso = Curso(
-            codigo,
-            nome,
-            carga_horaria
-        )
-
-        catalogo = CatalogoCursos(
-            dados["cursos"]
-        )
-        catalogo.adicionar_curso(
-             curso
-        )
-
-        dados["cursos"].append(
-             curso
-        )
-
-        salvar_cursos(
-        dados
-        )
-
-        print(
-            "\nCurso cadastrado com sucesso."
-        )
-
-    except Exception as erro:
-
-        print(
-            f"\nErro: {erro}"
-        )
-
-    input(
-        "\nEnter para continuar..."
-    )
-
-def remover_curso(dados):
-
-    codigo = input(
-        "Código do curso: "
-    ).strip().upper()
-
-    try:
-
-        catalogo = CatalogoCursos(
-            dados["cursos"]
-        )
-
-        catalogo.remover_curso(
-            codigo
-        )
-
-        curso_removido = None
-
-        for curso in dados["cursos"]:
-            if curso.codigo == codigo:
-                curso_removido = curso
-                break
-
-        if curso_removido is not None:
-            dados["cursos"].remove(
-                curso_removido
-            )
-
-        salvar_cursos(
-            dados
-        )
-
-        print(
-            "\nCurso removido."
-        )
-
-    except Exception as erro:
-
-        print(
-            f"\nErro: {erro}"
-        )
-
+        acao()
+        print(f"\n{mensagem_sucesso}")
+    except (ValueError, TypeError, KeyError) as erro:
+        print(f"\nErro: {erro}")
     pausar()
-def listar_cursos(dados):
 
-    print("\n=== CURSOS ===")
 
-    for curso in dados["cursos"]:
-        print(curso)
+# ---------------------------------------------------------------------------
+# Cursos
+# ---------------------------------------------------------------------------
 
-    input("\nPressione Enter para continuar...")
+def cadastrar_curso(dados):
+    print("\n=== CADASTRAR CURSO ===")
+    codigo = input("Código: ").strip().upper()
+    nome = input("Nome: ").strip()
+    carga_horaria = ler_int("Carga horária (horas): ", minimo=1)
 
-# ALUNO 
+    def acao():
+        curso = Curso(codigo, nome, carga_horaria)
+        catalogo = CatalogoCursos(dados["cursos"])
+        catalogo.adicionar_curso(curso)
+        dados["cursos"].append(curso)
+        salvar_cursos(dados)
 
-def cadastrar_aluno(dados):
+    _erro_ou_sucesso(acao, "Curso cadastrado com sucesso.")
 
-    matricula = input(
-        "Matrícula: "
-    )
 
-    nome = input(
-        "Nome: "
-    )
-
-    email = input(
-        "Email: "
-    )
-
-    for aluno in dados["alunos"]:
-
-        if (
-            aluno.matricula
-            == matricula
-        ):
-
-            print(
-                "\nMatrícula já cadastrada."
-            )
-
-            input(
-                "\nEnter para continuar..."
-            )
-
-            return
-
-    aluno = Aluno(
-        matricula,
-        nome,
-        email
-    )
-
-    dados["alunos"].append(
-        aluno
-    )
-
-    salvar_alunos(dados)
-
-    print(
-        "\nAluno cadastrado."
-    )
-
-    input(
-        "\nEnter para continuar..."
-    )
-def remover_aluno(dados):
-
-    matricula = input(
-        "Matrícula do aluno: "
-    )
-
-    for aluno in dados["alunos"]:
-
-        if (
-            aluno.matricula
-            == matricula
-        ):
-
-            dados["alunos"].remove(
-                aluno
-            )
-
-            salvar_alunos(dados)
-
-            print(
-                "\nAluno removido."
-            )
-
-            input(
-                "\nEnter para continuar..."
-            )
-
-            return
-
-    print(
-        "\nAluno não encontrado."
-    )
-
-    input(
-        "\nEnter para continuar..."
-    )
-def listar_alunos(dados):
-
-    print("\n=== ALUNOS ===")
-
-    for aluno in dados["alunos"]:
-
-        print(
-            f"{aluno.matricula}"
-            f" - {aluno.nome}"
-            f" | CR: {aluno.cr:.2f}"
-        )
-
-    input("\nPressione Enter para continuar...")
-
-# TURMAS 
-def listar_turmas(dados):
-
-    print("\n=== TURMAS ===")
-
-    for turma in dados["turmas"]:
-
-        print(
-            f"{turma.id}"
-            f" - {turma.curso.nome}"
-            f" ({len(turma)}/{turma.vagas})"
-        )
-
-    input("\nPressione Enter para continuar...")
-
-
-def listar_matriculas(dados):
-
-    print("\n=== MATRÍCULAS ===")
-
-    for matricula in dados["matriculas"]:
-
-        print(
-            f"{matricula.aluno.nome}"
-            f" -> {matricula.turma.id}"
-            f" -> {matricula.situacao()}"
-        )
-
-    input("\nPressione Enter para continuar...")
-
-# RELATÓRIOS
-def relatorio_alunos_por_turma(dados):
-
-    print("\n=== ALUNOS POR TURMA ===")
-
-    for turma in dados["turmas"]:
-
-        print(
-            f"\n{turma.id}"
-            f" - {turma.curso.nome}"
-        )
-
-        if not turma.matriculas:
-
-            print("Nenhum aluno matriculado.")
-            continue
-
-        for matricula in turma.matriculas:
-
-            print(
-                f" - {matricula.aluno.nome}"
-            )
-
-    input("\nPressione Enter para continuar...")
-
-
-def relatorio_top_cr(dados):
-
-    print("\n=== TOP CR ===")
-
-    alunos = sorted(
-        dados["alunos"],
-        reverse=True
-    )
-
-    top_n = getattr(
-        settings,
-        "top_n_alunos",
-        5
-    )
-
-    for posicao, aluno in enumerate(
-        alunos[:top_n],
-        start=1
-    ):
-
-        print(
-            f"{posicao}º "
-            f"{aluno.nome}"
-            f" - CR {aluno.cr:.2f}"
-        )
-
-    input("\nPressione Enter para continuar...")
-
-
-def relatorio_taxa_aprovacao(dados):
-
-    print("\n=== TAXA DE APROVAÇÃO ===")
-
-    for turma in dados["turmas"]:
-
-        total = 0
-        aprovados = 0
-
-        for matricula in turma.matriculas:
-
-            situacao = matricula.situacao()
-
-            if situacao != "CURSANDO":
-                total += 1
-
-            if situacao == "APROVADO":
-                aprovados += 1
-
-        taxa = (
-            (aprovados / total) * 100
-            if total > 0
-            else 0
-        )
-
-        print(
-            f"{turma.id}"
-            f" - {turma.curso.nome}"
-            f" -> {taxa:.2f}%"
-        )
-
-    input("\nPressione Enter para continuar...")
-
-
-def relatorio_distribuicao_notas(dados):
-
-    print("\n=== DISTRIBUIÇÃO DE NOTAS ===")
-
-    for turma in dados["turmas"]:
-
-        notas = [
-            matricula.nota
-            for matricula in turma.matriculas
-            if matricula.nota is not None
-        ]
-
-        print(
-            f"\nTurma {turma.id}"
-            f" - {turma.curso.nome}"
-        )
-
-        if not notas:
-
-            print("Sem notas cadastradas.")
-            continue
-
-        media = statistics.mean(
-            notas
-        )
-
-        mediana = statistics.median(
-            notas
-        )
-
-        desvio = (
-            statistics.stdev(notas)
-            if len(notas) > 1
-            else 0
-        )
-
-        print(
-            f"Média: {media:.2f}"
-        )
-
-        print(
-            f"Mediana: {mediana:.2f}"
-        )
-
-        print(
-            f"Desvio padrão: {desvio:.2f}"
-        )
-
-    input("\nPressione Enter para continuar...")
-
-
-def relatorio_alunos_em_risco(dados):
-
-    print("\n=== ALUNOS EM RISCO ===")
-
-    encontrou = False
-
-    for matricula in dados["matriculas"]:
-
-        nota = matricula.nota
-        frequencia = matricula.frequencia
-
-        risco_nota = (
-            nota is not None
-            and nota < settings.nota_minima_aprovacao
-        )
-
-        risco_frequencia = (
-            frequencia is not None
-            and frequencia < settings.frequencia_minima
-        )
-
-        if (
-            risco_nota
-            or risco_frequencia
-        ):
-
-            encontrou = True
-
-            print(
-                f"{matricula.aluno.nome}"
-                f" | Turma: {matricula.turma.id}"
-                f" | Nota: {nota}"
-                f" | Frequência: {frequencia}"
-            )
-
-    if not encontrou:
-
-        print(
-            "Nenhum aluno em situação de risco."
-        )
-
-    input("\nPressione Enter para continuar...")
-# TURMAS 
-def criar_turma(dados):
-
-    codigo_curso = input(
-        "Código do curso: "
-    )
-
-    curso = None
-
-    for c in dados["cursos"]:
-
-        if c.codigo == codigo_curso:
-
-            curso = c
-            break
-
+def editar_curso(dados):
+    codigo = input("Código do curso que deseja editar: ").strip().upper()
+    curso = _buscar_curso(dados, codigo)
     if curso is None:
-
-        print(
-            "\nCurso não encontrado."
-        )
-
-        input(
-            "\nEnter para continuar..."
-        )
-
+        print("\nCurso não encontrado.")
+        pausar()
         return
 
-    id_turma = input(
-        "ID da turma: "
-    )
+    novo_nome = input(f"Novo nome [{curso.nome}] (Enter mantém): ").strip()
+    nova_carga = input(
+        f"Nova carga horária [{curso.carga_horaria}] (Enter mantém): "
+    ).strip()
 
-    semestre = input(
-        "Semestre: "
-    )
-
-    dia = input(
-        "Dia (seg, ter, qua...): "
-    )
-
-    horario = input(
-        "Horário (08:00-10:00): "
-    )
-
-    vagas = ler_int(
-        "Vagas: "
-    )
-
-    turma = Turma(
-        curso,
-        id_turma,
-        semestre,
-        {
-            dia: horario
-        },
-        vagas
-    )
-
-    dados["turmas"].append(
-        turma
-    )
-
-    salvar_turmas(dados)
-
-    print(
-        "\nTurma criada."
-    )
-
-    input(
-        "\nEnter para continuar..."
-    )
-
-
-def remover_turma(dados):
-
-    turma_id = input(
-        "ID da turma: "
-    )
-
-    for turma in dados["turmas"]:
-
-        if turma.id == turma_id:
-
-            dados["turmas"].remove(
-                turma
-            )
-
-            salvar_turmas(dados)
-
-            print(
-                "\nTurma removida."
-            )
-
-            input(
-                "\nEnter para continuar..."
-            )
-
-            return
-
-    print(
-        "\nTurma não encontrada."
-    )
-
-    input(
-        "\nEnter para continuar..."
-    )
-
-
-def abrir_turma(dados):
-
-    turma_id = input(
-        "ID da turma: "
-    )
-
-    for turma in dados["turmas"]:
-
-        if turma.id == turma_id:
-
-            try:
-
-                turma.abrir()
-
-                salvar_turmas(dados)
-
-                print(
-                    "\nTurma aberta."
-                )
-
-            except ValueError as erro:
-
-                print(
-                    f"\\nErro: {erro}"
-                )
-
-            pausar()
-            return
-
-    print(
-        "\nTurma não encontrada."
-    )
-
+    try:
+        nome_validado = novo_nome or curso.nome
+        carga_validada = int(nova_carga) if nova_carga else curso.carga_horaria
+        curso_validado = Curso(
+            curso.codigo,
+            nome_validado,
+            carga_validada,
+            curso.prerequisitos,
+        )
+        curso.nome = curso_validado.nome
+        curso.carga_horaria = curso_validado.carga_horaria
+        salvar_cursos(dados)
+        print("\nCurso atualizado.")
+    except (ValueError, TypeError) as erro:
+        print(f"\nErro: {erro}")
     pausar()
 
 
+def remover_curso(dados):
+    codigo = input("Código do curso: ").strip().upper()
 
-def fechar_turma(dados):
+    def acao():
+        if _buscar_curso(dados, codigo) is None:
+            raise ValueError("Curso não encontrado.")
+        turmas_vinculadas = [
+            turma.id for turma in dados["turmas"]
+            if turma.curso.codigo == codigo
+        ]
+        if turmas_vinculadas:
+            raise ValueError(
+                "Não é possível remover: existem turmas vinculadas ("
+                + ", ".join(turmas_vinculadas) + ")."
+            )
+        alunos_com_historico = [
+            aluno.matricula for aluno in dados["alunos"]
+            if any(registro.get("curso") == codigo for registro in aluno.historico)
+        ]
+        if alunos_com_historico:
+            raise ValueError(
+                "Não é possível remover: o curso aparece no histórico dos alunos ("
+                + ", ".join(alunos_com_historico) + ")."
+            )
+        catalogo = CatalogoCursos(dados["cursos"])
+        catalogo.remover_curso(codigo)
+        dados["cursos"] = [curso for curso in dados["cursos"] if curso.codigo != codigo]
+        salvar_cursos(dados)
 
-    turma_id = input(
-        "ID da turma: "
-    )
+    _erro_ou_sucesso(acao, "Curso removido.")
 
-    for turma in dados["turmas"]:
 
-        if turma.id == turma_id:
+def adicionar_prerequisito(dados):
+    codigo_curso = input("Código do curso: ").strip().upper()
+    codigo_pre = input("Código do pré-requisito: ").strip().upper()
 
-            try:
+    def acao():
+        catalogo = CatalogoCursos(dados["cursos"])
+        catalogo.adicionar_prerequisito(codigo_curso, codigo_pre)
+        salvar_cursos(dados)
 
-                turma.fechar()
+    _erro_ou_sucesso(acao, "Pré-requisito adicionado.")
 
-                salvar_turmas(dados)
 
-                print(
-                    "\nTurma fechada."
-                )
-
-            except ValueError as erro:
-
-                print(
-                    f"\\nErro: {erro}"
-                )
-
-            pausar()
-            return
-
-    print(
-        "\nTurma não encontrada."
-    )
-
+def remover_prerequisito(dados):
+    codigo_curso = input("Código do curso: ").strip().upper()
+    codigo_pre = input("Código do pré-requisito: ").strip().upper()
+    curso = _buscar_curso(dados, codigo_curso)
+    if curso is None:
+        print("\nCurso não encontrado.")
+    else:
+        try:
+            curso.remover_prerequisito(codigo_pre)
+            salvar_cursos(dados)
+            print("\nPré-requisito removido.")
+        except ValueError as erro:
+            print(f"\nErro: {erro}")
     pausar()
 
 
+def listar_cursos(dados):
+    print("\n=== CURSOS ===")
+    if not dados["cursos"]:
+        print("Nenhum curso cadastrado.")
+    for curso in dados["cursos"]:
+        prerequisitos = ", ".join(curso.prerequisitos) or "Nenhum"
+        print(f"{curso} | Pré-requisitos: {prerequisitos}")
+    pausar()
 
-def matricular_aluno(dados):
 
-    matricula_aluno = input(
-        "Matrícula do aluno: "
-    )
+# ---------------------------------------------------------------------------
+# Alunos
+# ---------------------------------------------------------------------------
 
-    turma_id = input(
-        "ID da turma: "
-    )
+def cadastrar_aluno(dados):
+    matricula = input("Matrícula: ").strip()
+    nome = input("Nome: ").strip()
+    email = input("Email: ").strip()
 
-    aluno = None
+    def acao():
+        if _buscar_aluno(dados, matricula) is not None:
+            raise ValueError("Matrícula já cadastrada.")
+        aluno = Aluno(matricula, nome, email)
+        dados["alunos"].append(aluno)
+        salvar_alunos(dados)
 
-    for a in dados["alunos"]:
+    _erro_ou_sucesso(acao, "Aluno cadastrado.")
 
-        if a.matricula == matricula_aluno:
 
-            aluno = a
-            break
-
-    turma = None
-
-    for t in dados["turmas"]:
-
-        if t.id == turma_id:
-
-            turma = t
-            break
-
+def editar_aluno(dados):
+    matricula = input("Matrícula do aluno que deseja editar: ").strip()
+    aluno = _buscar_aluno(dados, matricula)
     if aluno is None:
-
         print("\nAluno não encontrado.")
         pausar()
         return
 
-    if turma is None:
+    novo_nome = input(f"Novo nome [{aluno.nome}] (Enter mantém): ").strip()
+    novo_email = input(f"Novo email [{aluno.email}] (Enter mantém): ").strip()
+    try:
+        aluno_validado = Aluno(
+            aluno.matricula,
+            novo_nome or aluno.nome,
+            novo_email or aluno.email,
+        )
+        aluno.nome = aluno_validado.nome
+        aluno.email = aluno_validado.email
+        salvar_alunos(dados)
+        print("\nAluno atualizado.")
+    except (ValueError, TypeError) as erro:
+        print(f"\nErro: {erro}")
+    pausar()
 
-        print("\nTurma não encontrada.")
+
+def remover_aluno(dados):
+    matricula = input("Matrícula do aluno: ").strip()
+
+    def acao():
+        aluno = _buscar_aluno(dados, matricula)
+        if aluno is None:
+            raise ValueError("Aluno não encontrado.")
+        possui_registros = any(
+            item.aluno.matricula == matricula for item in dados["matriculas"]
+        )
+        if possui_registros:
+            raise ValueError(
+                "Não é possível remover: o aluno possui matrículas registradas."
+            )
+        dados["alunos"].remove(aluno)
+        salvar_alunos(dados)
+
+    _erro_ou_sucesso(acao, "Aluno removido.")
+
+
+def listar_alunos(dados):
+    print("\n=== ALUNOS ===")
+    if not dados["alunos"]:
+        print("Nenhum aluno cadastrado.")
+    for aluno in sorted(dados["alunos"], key=lambda item: item.nome.casefold()):
+        print(f"{aluno.matricula} - {aluno.nome} | {aluno.email} | CR: {aluno.cr:.2f}")
+    pausar()
+
+
+# ---------------------------------------------------------------------------
+# Turmas
+# ---------------------------------------------------------------------------
+
+def criar_turma(dados):
+    print("\n=== CRIAR TURMA ===")
+    codigo_curso = input("Código do curso: ").strip().upper()
+    curso = _buscar_curso(dados, codigo_curso)
+    if curso is None:
+        print("\nCurso não encontrado.")
         pausar()
         return
 
-    for existente in dados["matriculas"]:
+    id_turma = input("ID único da turma: ").strip().upper()
+    if _buscar_turma(dados, id_turma) is not None:
+        print("\nErro: já existe uma turma com esse ID. Informe um ID diferente.")
+        pausar()
+        return
 
-        if (
-            existente.aluno.matricula == matricula_aluno
-            and existente.turma.id == turma_id
-        ):
-
-            print("\nErro: aluno já está matriculado nessa turma.")
-            pausar()
-            return
+    semestre = input("Semestre (ex.: 2026.2): ").strip()
+    dias_digitados = input("Dias (ex.: seg qua ou seg,qua): ").strip()
+    horario = input("Horário (ex.: 08:00-10:00): ").strip()
+    vagas = ler_int("Vagas: ", minimo=1)
+    local = input("Local (opcional): ").strip()
 
     try:
-
-        matricula = Matricula(
-            aluno,
-            turma
-        )
-
-        dados["matriculas"].append(
-            matricula
-        )
-
-        salvar_matriculas(dados)
-
-        print(
-            "\nMatrícula realizada."
-        )
-
-    except ValueError as e:
-
-        print(
-            f"\nErro: {e}"
-        )
-
+        dias = normalizar_dias(dias_digitados)
+        dias_horarios = {dia: horario for dia in dias}
+        turma = Turma(curso, id_turma, semestre, dias_horarios, vagas, local)
+        dados["turmas"].append(turma)
+        salvar_turmas(dados)
+        print("\nTurma criada com sucesso.")
+    except (ValueError, TypeError) as erro:
+        print(f"\nErro: {erro}")
     pausar()
+
+
+def remover_turma(dados):
+    id_turma = input("ID da turma: ").strip().upper()
+
+    def acao():
+        turma = _buscar_turma(dados, id_turma)
+        if turma is None:
+            raise ValueError("Turma não encontrada.")
+        if any(item.turma.id == id_turma for item in dados["matriculas"]):
+            raise ValueError(
+                "Não é possível remover: a turma possui matrículas no histórico."
+            )
+        dados["turmas"].remove(turma)
+        salvar_turmas(dados)
+
+    _erro_ou_sucesso(acao, "Turma removida.")
+
+
+def abrir_turma(dados):
+    id_turma = input("ID da turma: ").strip().upper()
+    turma = _buscar_turma(dados, id_turma)
+    if turma is None:
+        print("\nTurma não encontrada.")
+    else:
+        turma.abrir()
+        salvar_turmas(dados)
+        print("\nTurma aberta.")
+    pausar()
+
+
+def fechar_turma(dados):
+    id_turma = input("ID da turma: ").strip().upper()
+    turma = _buscar_turma(dados, id_turma)
+    if turma is None:
+        print("\nTurma não encontrada.")
+    else:
+        turma.fechar()
+        salvar_turmas(dados)
+        print("\nTurma fechada.")
+    pausar()
+
+
+def listar_turmas(dados):
+    print("\n=== TURMAS ===")
+    if not dados["turmas"]:
+        print("Nenhuma turma cadastrada.")
+    for turma in dados["turmas"]:
+        dias = ", ".join(sorted(turma.horarios))
+        status = "ABERTA" if turma.aberta else "FECHADA"
+        print(
+            f"{turma.id} - {turma.curso.nome} | Semestre: {turma.semestre} "
+            f"| Vagas: {len(turma)}/{turma.vagas} | Dias: {dias} | {status}"
+        )
+    pausar()
+
+
+# ---------------------------------------------------------------------------
+# Matrículas
+# ---------------------------------------------------------------------------
+
+def matricular_aluno(dados):
+    matricula_aluno = input("Matrícula do aluno: ").strip()
+    id_turma = input("ID da turma: ").strip().upper()
+    aluno = _buscar_aluno(dados, matricula_aluno)
+    turma = _buscar_turma(dados, id_turma)
+
+    if aluno is None:
+        print("\nAluno não encontrado.")
+        pausar()
+        return
+    if turma is None:
+        print("\nTurma não encontrada.")
+        pausar()
+        return
+    if _buscar_matricula(dados, matricula_aluno, id_turma) is not None:
+        print("\nErro: já existe um registro de matrícula para esse aluno e turma.")
+        pausar()
+        return
+
+    try:
+        matricula = Matricula(aluno, turma)
+        dados["matriculas"].append(matricula)
+        salvar_matriculas(dados)
+        print("\nMatrícula realizada com sucesso.")
+    except (ValueError, TypeError) as erro:
+        print(f"\nErro: {erro}")
+    pausar()
+
+
 def lancar_nota(dados):
-
-    matricula_aluno = input(
-        "Matrícula do aluno: "
-    )
-
-    turma_id = input(
-        "ID da turma: "
-    )
-
-    nota = ler_float(
-        "Nota: "
-    )
-
-    for matricula in dados["matriculas"]:
-
-        if (
-            matricula.aluno.matricula
-            == matricula_aluno
-            and
-            matricula.turma.id
-            == turma_id
-        ):
-
-            try:
-
-                matricula.lancar_nota(
-                    nota
-                )
-
-                salvar_matriculas(dados)
-
-                print(
-                    "\nNota lançada."
-                )
-
-            except ValueError as erro:
-
-                print(
-                    f"\nErro: {erro}"
-                )
-
-            pausar()
-            return
-
-    print(
-        "\nMatrícula não encontrada."
-    )
-
+    matricula_aluno = input("Matrícula do aluno: ").strip()
+    id_turma = input("ID da turma: ").strip().upper()
+    item = _buscar_matricula(dados, matricula_aluno, id_turma)
+    if item is None:
+        print("\nMatrícula não encontrada.")
+        pausar()
+        return
+    nota = ler_float("Nota (0 a 10): ", minimo=0, maximo=10)
+    try:
+        item.lancar_nota(nota)
+        salvar_matriculas(dados)
+        print("\nNota lançada.")
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
     pausar()
 
 
 def lancar_frequencia(dados):
-
-    matricula_aluno = input(
-        "Matrícula do aluno: "
-    )
-
-    turma_id = input(
-        "ID da turma: "
-    )
-
-    frequencia = ler_float(
-        "Frequência: "
-    )
-
-    for matricula in dados["matriculas"]:
-
-        if (
-            matricula.aluno.matricula
-            == matricula_aluno
-            and
-            matricula.turma.id
-            == turma_id
-        ):
-
-            try:
-
-                matricula.lancar_frequencia(
-                    frequencia
-                )
-
-                salvar_matriculas(dados)
-
-                print(
-                    "\nFrequência lançada."
-                )
-
-            except ValueError as erro:
-
-                print(
-                    f"\nErro: {erro}"
-                )
-
-            pausar()
-            return
-
-    print(
-        "\nMatrícula não encontrada."
-    )
-
+    matricula_aluno = input("Matrícula do aluno: ").strip()
+    id_turma = input("ID da turma: ").strip().upper()
+    item = _buscar_matricula(dados, matricula_aluno, id_turma)
+    if item is None:
+        print("\nMatrícula não encontrada.")
+        pausar()
+        return
+    frequencia = ler_float("Frequência (0 a 100): ", minimo=0, maximo=100)
+    try:
+        item.lancar_frequencia(frequencia)
+        salvar_matriculas(dados)
+        print("\nFrequência lançada.")
+    except ValueError as erro:
+        print(f"\nErro: {erro}")
     pausar()
 
 
 def trancar_matricula(dados):
-
-    matricula_aluno = input(
-        "Matrícula do aluno: "
-    )
-
-    turma_id = input(
-        "ID da turma: "
-    )
-
-    for matricula in dados["matriculas"]:
-
-        if (
-            matricula.aluno.matricula
-            == matricula_aluno
-            and
-            matricula.turma.id
-            == turma_id
-        ):
-
-            try:
-
-                matricula.trancar(
-                    settings.__dict__
-                )
-
-                salvar_matriculas(dados)
-
-                print(
-                    "\nMatrícula trancada."
-                )
-
-            except ValueError as erro:
-
-                print(
-                    f"\nErro: {erro}"
-                )
-
-            pausar()
-            return
-
-    print(
-        "\nMatrícula não encontrada."
-    )
-
+    matricula_aluno = input("Matrícula do aluno: ").strip()
+    id_turma = input("ID da turma: ").strip().upper()
+    item = _buscar_matricula(dados, matricula_aluno, id_turma)
+    if item is None:
+        print("\nMatrícula não encontrada.")
+    else:
+        try:
+            item.trancar(settings.obter_configuracoes())
+            salvar_matriculas(dados)
+            print("\nMatrícula trancada.")
+        except ValueError as erro:
+            print(f"\nErro: {erro}")
     pausar()
 
 
-def adicionar_prerequisito(dados):
-
-    print("\n=== ADICIONAR PRÉ-REQUISITO ===")
-
-    codigo_curso = input(
-        "Código do curso: "
-    ).strip().upper()
-
-    codigo_prerequisito = input(
-        "Código do pré-requisito: "
-    ).strip().upper()
-
-    try:
-
-        catalogo = CatalogoCursos(
-            dados["cursos"]
-        )
-
-        catalogo.adicionar_prerequisito(
-            codigo_curso,
-            codigo_prerequisito
-        )
-
-        salvar_cursos(
-            dados
-        )
-
+def listar_matriculas(dados):
+    print("\n=== MATRÍCULAS ===")
+    if not dados["matriculas"]:
+        print("Nenhuma matrícula registrada.")
+    for item in dados["matriculas"]:
         print(
-            "\nPré-requisito adicionado com sucesso."
+            f"{item.aluno.matricula} - {item.aluno.nome} -> "
+            f"{item.turma.id} ({item.turma.curso.nome}) -> {item.situacao()}"
         )
+    pausar()
 
-    except Exception as erro:
 
+# ---------------------------------------------------------------------------
+# Relatórios
+# ---------------------------------------------------------------------------
+
+def relatorio_alunos_por_turma(dados):
+    print("\n=== ALUNOS POR TURMA ===")
+    for turma in dados["turmas"]:
+        print(f"\n{turma.id} - {turma.curso.nome} ({turma.semestre})")
+        matriculas = [item for item in dados["matriculas"] if item.turma.id == turma.id]
+        if not matriculas:
+            print("Nenhum aluno matriculado.")
+            continue
+        for item in matriculas:
+            print(f" - {item.aluno.nome} | {item.situacao()}")
+    pausar()
+
+
+def relatorio_top_cr(dados):
+    print("\n=== TOP ALUNOS POR CR ===")
+    top_n = settings.top_n_alunos
+    alunos = sorted(dados["alunos"], reverse=True)[:top_n]
+    if not alunos:
+        print("Nenhum aluno cadastrado.")
+    for posicao, aluno in enumerate(alunos, start=1):
+        print(f"{posicao}º {aluno.nome} - CR {aluno.cr:.2f}")
+    pausar()
+
+
+def relatorio_taxa_aprovacao(dados):
+    print("\n=== TAXA DE APROVAÇÃO POR TURMA ===")
+    for turma in dados["turmas"]:
+        concluidas = [
+            item for item in dados["matriculas"]
+            if item.turma.id == turma.id
+            and item.situacao() in {"APROVADO", "REPROVADO_POR_NOTA", "REPROVADO_POR_FREQUENCIA"}
+        ]
+        aprovados = sum(1 for item in concluidas if item.situacao() == "APROVADO")
+        taxa = (aprovados / len(concluidas) * 100) if concluidas else 0.0
+        print(f"{turma.id} - {turma.curso.nome}: {taxa:.2f}% ({aprovados}/{len(concluidas)})")
+    pausar()
+
+
+def relatorio_distribuicao_notas(dados):
+    print("\n=== DISTRIBUIÇÃO DE NOTAS ===")
+    for turma in dados["turmas"]:
+        notas = [
+            float(item.nota) for item in dados["matriculas"]
+            if item.turma.id == turma.id and item.nota is not None and item.ativa
+        ]
+        print(f"\nTurma {turma.id} - {turma.curso.nome}")
+        if not notas:
+            print("Sem notas cadastradas em matrículas ativas.")
+            continue
+        media = statistics.mean(notas)
+        mediana = statistics.median(notas)
+        desvio = statistics.stdev(notas) if len(notas) > 1 else 0.0
+        print(f"Média: {media:.2f}")
+        print(f"Mediana: {mediana:.2f}")
+        print(f"Desvio padrão: {desvio:.2f}")
+    pausar()
+
+
+def relatorio_alunos_em_risco(dados):
+    print("\n=== ALUNOS EM RISCO ===")
+    encontrados = [
+        item for item in dados["matriculas"]
+        if item.ativa and (
+            (item.nota is not None and item.nota < settings.nota_minima_aprovacao)
+            or (item.frequencia is not None and item.frequencia < settings.frequencia_minima)
+        )
+    ]
+    if not encontrados:
+        print("Nenhum aluno em situação de risco.")
+    for item in encontrados:
         print(
-            f"\nErro: {erro}"
+            f"{item.aluno.nome} | Turma: {item.turma.id} "
+            f"| Nota: {item.nota} | Frequência: {item.frequencia}"
         )
-
-    input(
-        "\nEnter para continuar..."
-    )
+    pausar()

@@ -42,5 +42,13 @@
         "nome": "Design",
         "carga_horaria": 60,
         "prerequisitos": []
+    },
+    {
+        "codigo": "ALG01",
+        "nome": "Algoritmos I",
+        "carga_horaria": 60,
+        "prerequisitos": [
+            "ALG101"
+        ]
     }
 ]

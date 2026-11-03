@@ -58,11 +58,30 @@
         "aberta": true
     },
     {
-        "id": "001",
+        "id": "002",
         "curso": "DES101",
         "semestre": "2",
         "horarios": {
-            "seg qua": [
+            "seg": [
+                "08:00-10:00"
+            ],
+            "qua": [
+                "08:00-10:00"
+            ]
+        },
+        "vagas": 45,
+        "local": "",
+        "aberta": true
+    },
+    {
+        "id": "004",
+        "curso": "ALG01",
+        "semestre": "2026.2",
+        "horarios": {
+            "seg": [
+                "08:00-10:00"
+            ],
+            "qua": [
                 "08:00-10:00"
             ]
         },

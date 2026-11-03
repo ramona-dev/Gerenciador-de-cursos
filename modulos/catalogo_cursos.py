@@ -1,226 +1,94 @@
+"""Regras de catálogo, unicidade e dependência entre pré-requisitos."""
+
 from modulos.curso import Curso
 
 
 class CatalogoCursos:
-
-    def __init__(
-        self,
-        cursos=None
-    ):
-
+    def __init__(self, cursos=None):
         self._cursos = {}
-
-        if cursos:
-
-            for curso in cursos:
-
-                self.adicionar_curso(
-                    curso
-                )
+        for curso in cursos or []:
+            self.adicionar_curso(curso)
 
     @property
     def cursos(self):
+        return list(self._cursos.values())
 
-        return list(
-            self._cursos.values()
-        )
+    def buscar(self, codigo):
+        return self._cursos.get(str(codigo).strip().upper())
 
-    def buscar(
-        self,
-        codigo
-    ):
-
-        return self._cursos.get(
-            codigo
-        )
-
-    def adicionar_curso(
-        self,
-        curso
-    ):
-
-        if not isinstance(
-            curso,
-            Curso
-        ):
-            raise TypeError(
-                "Objeto deve ser um Curso."
-            )
-
+    def adicionar_curso(self, curso):
+        if not isinstance(curso, Curso):
+            raise TypeError("Objeto deve ser um Curso.")
         if curso.codigo in self._cursos:
+            raise ValueError("Código de curso já cadastrado.")
+        self._cursos[curso.codigo] = curso
 
-            raise ValueError(
-                "Código de curso já cadastrado."
-            )
-
-        self._cursos[
-            curso.codigo
-        ] = curso
-
-    def remover_curso(
-        self,
-        codigo
-    ):
-
+    def remover_curso(self, codigo):
+        codigo = str(codigo).strip().upper()
         if codigo not in self._cursos:
-
-            raise ValueError(
-                "Curso não encontrado."
-            )
-
-        del self._cursos[
-            codigo
+            raise ValueError("Curso não encontrado.")
+        dependentes = [
+            curso.codigo
+            for curso in self._cursos.values()
+            if codigo in curso.prerequisitos and curso.codigo != codigo
         ]
+        if dependentes:
+            raise ValueError(
+                "Não é possível remover: o curso é pré-requisito de "
+                + ", ".join(dependentes)
+                + "."
+            )
+        del self._cursos[codigo]
 
-    def adicionar_prerequisito(
-        self,
-        codigo_curso,
-        codigo_prerequisito
-    ):
-
-        curso = self.buscar(
-            codigo_curso
-        )
-
+    def adicionar_prerequisito(self, codigo_curso, codigo_prerequisito):
+        codigo_curso = str(codigo_curso).strip().upper()
+        codigo_prerequisito = str(codigo_prerequisito).strip().upper()
+        curso = self.buscar(codigo_curso)
         if curso is None:
+            raise ValueError("Curso não encontrado.")
+        if self.buscar(codigo_prerequisito) is None:
+            raise ValueError("Pré-requisito inexistente.")
+        if self.possui_ciclo(codigo_curso, codigo_prerequisito):
+            raise ValueError("Ciclo de pré-requisitos detectado.")
+        curso.adicionar_prerequisito(codigo_prerequisito)
 
-            raise ValueError(
-                "Curso não encontrado."
-            )
-
-        prerequisito = self.buscar(
-            codigo_prerequisito
-        )
-
-        if prerequisito is None:
-
-            raise ValueError(
-                "Pré-requisito inexistente."
-            )
-
-        if self.possui_ciclo(
-            codigo_curso,
-            codigo_prerequisito
-        ):
-
-            raise ValueError(
-                "Ciclo de pré-requisitos detectado."
-            )
-
-        curso.adicionar_prerequisito(
-            codigo_prerequisito
-        )
-
-    def possui_ciclo(
-        self,
-        codigo_curso,
-        codigo_prerequisito
-    ):
-
+    def possui_ciclo(self, codigo_curso, codigo_prerequisito):
+        """Verifica se adicionar a aresta curso -> pré-requisito cria um ciclo."""
         visitados = set()
 
-        def dfs(codigo):
-
-            if codigo == codigo_curso:
-
+        def dfs(codigo_atual):
+            if codigo_atual == codigo_curso:
                 return True
-
-            if codigo in visitados:
-
+            if codigo_atual in visitados:
                 return False
-
-            visitados.add(
-                codigo
-            )
-
-            curso = self.buscar(
-                codigo
-            )
-
-            if curso is None:
-
+            visitados.add(codigo_atual)
+            curso_atual = self.buscar(codigo_atual)
+            if curso_atual is None:
                 return False
+            return any(dfs(pre) for pre in curso_atual.prerequisitos)
 
-            for pre in curso.prerequisitos:
+        return dfs(codigo_prerequisito)
 
-                if dfs(pre):
+    def validar_referencias(self):
+        for curso in self._cursos.values():
+            for prerequisito in curso.prerequisitos:
+                if prerequisito not in self._cursos:
+                    raise ValueError(
+                        f"O curso {curso.codigo} possui pré-requisito inexistente: {prerequisito}."
+                    )
+                if self.possui_ciclo(curso.codigo, prerequisito):
+                    raise ValueError(
+                        f"Ciclo de pré-requisitos detectado envolvendo {curso.codigo}."
+                    )
 
-                    return True
-
-            return False
-
-        return dfs(
-            codigo_prerequisito
-        )
-
-    def __contains__(
-        self,
-        codigo
-    ):
-
-        return (
-            codigo
-            in self._cursos
-        )
+    def __contains__(self, codigo):
+        return str(codigo).strip().upper() in self._cursos
 
     def __len__(self):
-
-        return len(
-            self._cursos
-        )
+        return len(self._cursos)
 
     def __iter__(self):
-
-        return iter(
-            self.cursos
-        )
+        return iter(self.cursos)
 
     def __repr__(self):
-
-        return (
-            f"CatalogoCursos("
-            f"{len(self)} cursos)"
-        )
-
-def test_impede_ciclo_de_prerequisitos():
-
-    mat = Curso(
-        "MAT101",
-        "Matemática",
-        60
-    )
-
-    alg = Curso(
-        "ALG101",
-        "Algoritmos",
-        60
-    )
-
-    poo = Curso(
-        "POO101",
-        "POO",
-        60
-    )
-
-    catalogo = CatalogoCursos(
-        [mat, alg, poo]
-    )
-
-    catalogo.adicionar_prerequisito(
-        "POO101",
-        "ALG101"
-    )
-
-    catalogo.adicionar_prerequisito(
-        "ALG101",
-        "MAT101"
-    )
-
-    with pytest.raises(
-        ValueError
-    ):
-
-        catalogo.adicionar_prerequisito(
-            "MAT101",
-            "POO101"
-        )
+        return f"CatalogoCursos({len(self)} cursos)"
