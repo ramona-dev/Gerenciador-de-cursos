@@ -1,3 +1,4 @@
+
 class Curso:
 
     def __init__(
@@ -129,4 +130,49 @@ class Curso:
             f"Curso("
             f"{self.codigo}, "
             f"{self.nome})"
+        )
+
+
+def test_impede_ciclo_de_prerequisitos():
+
+
+    mat = Curso(
+        "MAT101",
+        "Matemática",
+        60
+    )
+
+    alg = Curso(
+        "ALG101",
+        "Algoritmos",
+        60
+    )
+
+    poo = Curso(
+        "POO101",
+        "POO",
+        60
+    )
+
+    catalogo = CatalogoCursos(
+        [mat, alg, poo]
+    )
+
+    catalogo.adicionar_prerequisito(
+        "POO101",
+        "ALG101"
+    )
+
+    catalogo.adicionar_prerequisito(
+        "ALG101",
+        "MAT101"
+    )
+
+    with pytest.raises(
+        ValueError
+    ):
+
+        catalogo.adicionar_prerequisito(
+            "MAT101",
+            "POO101"
         )

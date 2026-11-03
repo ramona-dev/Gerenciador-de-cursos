@@ -38,9 +38,9 @@
         ]
     },
     {
-        "codigo": "0937598",
-        "nome": "Engenharia Civil ",
-        "carga_horaria": 64,
+        "codigo": "DES101",
+        "nome": "Design",
+        "carga_horaria": 60,
         "prerequisitos": []
     }
 ]

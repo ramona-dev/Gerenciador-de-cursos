@@ -30,5 +30,13 @@
         "frequencia": 85,
         "ativa": true,
         "data": "2026-11-01"
+    },
+    {
+        "aluno": "2025003",
+        "turma": "001",
+        "nota": null,
+        "frequencia": 60.0,
+        "ativa": false,
+        "data": "2026-11-03"
     }
 ]

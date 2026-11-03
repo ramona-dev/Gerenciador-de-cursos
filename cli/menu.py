@@ -3,6 +3,7 @@ from cli.telas import (
     cadastrar_curso,
     remover_curso,
     listar_cursos,
+    adicionar_prerequisito,
 
     # Alunos
     cadastrar_aluno,

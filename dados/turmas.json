@@ -43,5 +43,31 @@
         "vagas": 30,
         "local": "",
         "aberta": true
+    },
+    {
+        "id": "001",
+        "curso": "MAT101",
+        "semestre": "1 ",
+        "horarios": {
+            "seg": [
+                "09:00-10:00"
+            ]
+        },
+        "vagas": 45,
+        "local": "",
+        "aberta": true
+    },
+    {
+        "id": "001",
+        "curso": "DES101",
+        "semestre": "2",
+        "horarios": {
+            "seg qua": [
+                "08:00-10:00"
+            ]
+        },
+        "vagas": 45,
+        "local": "",
+        "aberta": true
     }
 ]
