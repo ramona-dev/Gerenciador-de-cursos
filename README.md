@@ -1,285 +1,132 @@
-# Gerenciador de Cursos
+# Gerenciador de Cursos e Alunos
 
-O Sistema de gerenciamento acadêmico foi desenvolvido em Python, com interface de linha de comando (CLI), persistência de dados em arquivos JSON e aplicação de conceitos de Programação Orientada a Objetos (POO).
+Sistema acadêmico desenvolvido em Python com interface de linha de comando (CLI), Programação Orientada a Objetos e persistência em arquivos JSON. A aplicação organiza cursos, alunos, turmas e matrículas, aplica regras de matrícula e disponibiliza relatórios acadêmicos.
 
-Ele permite gerenciar cursos, alunos, turmas e matrículas, além de realizar lançamentos de notas e frequências e gerar relatórios acadêmicos.
+## Sumário
 
----
+- [Funcionalidades](#funcionalidades)
+- [Regras de negócio](#regras-de-negócio)
+- [Relatórios](#relatórios)
+- [Arquitetura e decisões de design](#arquitetura-e-decisões-de-design)
+- [UML](#uml)
+- [Estrutura do projeto](#estrutura-do-projeto)
+- [Configuração e execução](#configuração-e-execução)
+- [Persistência e dados de demonstração](#persistência-e-dados-de-demonstração)
+- [Testes](#testes)
+- [Limitações conhecidas](#limitações-conhecidas)
 
-## 📌 Sobre o projeto
-
-O **Gerenciador de Cursos** foi desenvolvido como um projeto acadêmico com o objetivo de aplicar conceitos de Engenharia de Software e Programação Orientada a Objetos em um sistema funcional.
-
-A aplicação funciona por meio de uma interface de terminal e possui regras para controlar o processo acadêmico, como:
-
-- cadastro, edição, consulta e remoção de cursos;
-- cadastro, edição, consulta e remoção de alunos;
-- criação e gerenciamento de turmas;
-- definição de pré-requisitos entre cursos;
-- realização de matrículas;
-- validação de pré-requisitos;
-- controle de vagas;
-- identificação de conflitos de horário;
-- controle do limite de turmas por aluno;
-- lançamento de notas;
-- lançamento de frequência;
-- trancamento de matrícula;
-- acompanhamento da situação acadêmica;
-- geração de relatórios;
-- persistência dos dados em arquivos JSON.
-
----
-
-## 🚀 Funcionalidades
+## Funcionalidades
 
 ### Cursos
 
-O sistema permite:
-
-- cadastrar cursos;
-- listar cursos;
-- editar cursos;
-- remover cursos;
-- adicionar pré-requisitos;
-- remover pré-requisitos;
-- validar referências entre cursos;
-- impedir ciclos de pré-requisitos.
-
-Cada curso possui informações como:
-
-- código;
-- nome;
-- carga horária;
-- pré-requisitos.
-
----
+- Cadastrar, consultar, editar e remover cursos.
+- Definir código, nome, carga horária e pré-requisitos.
+- Adicionar e remover pré-requisitos.
+- Validar referências e impedir ciclos entre pré-requisitos.
 
 ### Alunos
 
-É possível:
-
-- cadastrar alunos;
-- listar alunos;
-- editar dados cadastrais;
-- remover alunos;
-- consultar histórico acadêmico;
-- acompanhar o Coeficiente de Rendimento (CR);
-- consultar turmas em que o aluno possui matrícula ativa.
-
-O cadastro possui informações como:
-
-- matrícula;
-- nome;
-- e-mail;
-- histórico acadêmico.
-
----
+- Cadastrar, consultar, editar e remover alunos.
+- Manter matrícula, nome e e-mail.
+- Consultar histórico acadêmico e Coeficiente de Rendimento (CR).
+- Consultar turmas com matrícula ativa.
 
 ### Turmas
 
-O sistema permite:
-
-- criar turmas;
-- listar turmas;
-- abrir uma turma;
-- fechar uma turma;
-- remover turmas;
-- definir período letivo;
-- definir horários;
-- definir capacidade;
-- informar local da turma;
-- controlar alunos matriculados.
-
-Também são realizadas validações para evitar conflitos de horário e exceder a capacidade da turma.
-
----
+- Criar, consultar e remover turmas.
+- Abrir e fechar turmas para matrícula.
+- Definir período letivo, dias, horários, capacidade e local.
+- Consultar alunos matriculados e ocupação.
 
 ### Matrículas
 
-O processo de matrícula verifica automaticamente as regras necessárias para que um aluno possa ingressar em uma turma.
+- Matricular um aluno em uma turma.
+- Lançar nota e frequência.
+- Consultar a situação acadêmica.
+- Trancar matrícula, respeitando o prazo configurado.
 
-Entre as validações estão:
+## Regras de negócio
 
-- turma aberta;
-- existência de vaga;
-- matrícula duplicada;
-- pré-requisitos do curso;
-- conflitos de horário;
-- limite de turmas por aluno.
+O sistema valida as regras antes de efetivar uma matrícula:
 
-Após a matrícula, é possível:
+1. A turma precisa estar aberta.
+2. A turma precisa possuir vaga disponível.
+3. O aluno não pode ter outra matrícula ativa na mesma turma.
+4. O aluno precisa ter aprovação em todos os pré-requisitos do curso.
+5. Não pode haver conflito de horário com outra turma ativa no mesmo período letivo.
+6. O limite máximo de turmas simultâneas, quando configurado, não pode ser ultrapassado.
 
-- lançar nota;
-- lançar frequência;
-- consultar situação;
-- trancar matrícula.
+Uma matrícula trancada é mantida no arquivo de dados para preservar o registro acadêmico, mas deixa de ocupar vaga e de compor as turmas ativas do aluno. Também não é considerada nos relatórios de resultados concluídos.
 
-As situações acadêmicas podem incluir:
+## Relatórios
 
-- `CURSANDO`;
-- `APROVADO`;
-- `REPROVADO_POR_NOTA`;
-- `REPROVADO_POR_FREQUENCIA`;
-- `TRANCADA`.
+Os relatórios são implementados em `cli/relatorios.py`, separados das telas de cadastro e das regras do menu.
 
----
-
-## 📊 Relatórios
-
-O sistema possui relatórios acadêmicos acessíveis pela própria CLI.
-
-### Alunos por turma
-
-Apresenta os alunos vinculados a uma determinada turma.
-
-### Top alunos por CR
-
-Apresenta os alunos com os melhores Coeficientes de Rendimento, considerando a quantidade configurada no sistema.
-
-### Taxa de aprovação
-
-Permite analisar a taxa de aprovação acadêmica.
-
-### Distribuição de notas
-
-Apresenta a distribuição das notas registradas no sistema.
-
-### Alunos em risco
-
-Identifica alunos que apresentam situações acadêmicas que podem indicar risco de reprovação.
-
----
-
-## 🧠 Regras de negócio
-
-O sistema possui diversas validações para garantir a consistência dos dados.
-
-### Pré-requisitos
-
-Para realizar uma matrícula, o aluno precisa ter sido aprovado em todos os pré-requisitos exigidos pelo curso.
-
-O sistema também impede a criação de ciclos de dependência entre cursos.
-
-Por exemplo:
-
-```text
-Curso A → Curso B → Curso C
-```
-
-é permitido, mas uma situação como:
-
-```text
-Curso A → Curso B → Curso A
-```
-
-é bloqueada.
-
----
-
-### Conflito de horários
-
-Um aluno não pode possuir duas matrículas ativas em turmas que ocorram no mesmo horário.
-
----
-
-### Capacidade da turma
-
-Uma matrícula somente pode ser realizada quando ainda existir vaga disponível na turma.
-
----
-
-### Turma aberta
-
-A matrícula somente pode ser realizada em uma turma que esteja aberta para matrícula.
-
----
-
-### Limite de turmas
-
-O sistema permite configurar uma quantidade máxima de turmas que um aluno pode cursar simultaneamente.
-
----
-
-### Trancamento
-
-Uma matrícula pode ser trancada respeitando as regras e o prazo configurado para trancamento.
-
-Uma matrícula trancada:
-
-- deixa de ser considerada uma matrícula ativa;
-- não ocupa vaga da turma;
-- não aparece entre as turmas ativas do aluno;
-- mantém seu registro para fins de persistência e histórico.
-
----
-
-## ⚙️ Configurações
-
-As principais configurações do sistema são armazenadas no arquivo:
-
-```text
-settings.json
-```
-
-Exemplo:
-
-```json
-{
-    "nota_minima_aprovacao": 6.0,
-    "frequencia_minima": 75.0,
-    "data_limite_trancamento": "2027-12-30",
-    "max_turmas_por_aluno": null,
-    "top_n_alunos": 5
-}
-```
-
-### Configurações disponíveis
-
-| Configuração | Descrição |
+| Relatório | Conteúdo e critério |
 |---|---|
-| `nota_minima_aprovacao` | Nota mínima necessária para aprovação |
-| `frequencia_minima` | Frequência mínima necessária |
-| `data_limite_trancamento` | Data limite para solicitar trancamento |
-| `max_turmas_por_aluno` | Limite máximo de turmas por aluno |
-| `top_n_alunos` | Quantidade de alunos exibida no ranking de CR |
+| Alunos por turma | Lista apenas matrículas ativas, mostra ocupação `vagas ocupadas / capacidade` e informa separadamente a quantidade de trancamentos. |
+| Top N por CR no período | Solicita um período letivo e calcula a média simples das notas concluídas associadas às turmas daquele período. A quantidade exibida vem de `top_n_alunos`. |
+| Taxa de aprovação | Apresenta resultados agrupados por curso e por turma. Considera matrículas concluídas ativas; matrículas trancadas ou ainda cursando não entram no denominador. |
+| Distribuição de notas | Exibe média, mediana e desvio padrão das notas lançadas em matrículas ativas por turma. |
+| Alunos em risco | Lista matrículas ativas com nota ou frequência abaixo dos limites configurados. |
 
----
+**Critério do CR por período:** são utilizadas as notas existentes no histórico acadêmico que tenham ID de turma associado. Registros históricos antigos sem vínculo com turma não permitem identificar o período e, portanto, ficam fora do ranking por período. O cálculo mantém a média aritmética simples já utilizada pelo domínio (`Aluno.cr` / `HistoricoAcademico.cr`).
 
-## 💾 Persistência dos dados
+## Arquitetura e decisões de design
 
-Os dados do sistema são armazenados em arquivos JSON.
+O projeto foi dividido em quatro áreas principais:
 
-A pasta `dados/` contém os arquivos utilizados para persistência:
+- `modulos/`: entidades do domínio e regras acadêmicas.
+- `cli/`: interação com o usuário, menus e apresentação dos relatórios.
+- `persistencia/`: leitura, gravação e reconstrução dos objetos a partir de JSON.
+- `dados/`: arquivos JSON usados pela aplicação.
 
-```text
-dados/
-├── alunos.json
-├── cursos.json
-├── matriculas.json
-└── turmas.json
+A separação entre menu e telas evita que a navegação concentre as operações do domínio. O menu utiliza um fluxo de submenu compartilhado, enquanto `cli/relatorios.py` concentra consultas e cálculos de relatórios. `cli/telas.py` mantém as operações interativas de cadastro e matrícula e reexporta os nomes antigos dos relatórios para compatibilidade com chamadas anteriores.
+
+### Decisões de orientação a objetos
+
+- **Encapsulamento:** atributos de domínio são mantidos em atributos internos, com propriedades que validam ou controlam seu acesso.
+- **Herança múltipla:** `Aluno` herda de `Pessoa` e `HistoricoAcademico`, combinando dados pessoais e comportamento de histórico/CR.
+- **Herança simples:** `Turma` herda de `Oferta`, reutilizando período, capacidade, local e estado de abertura.
+- **Responsabilidade do catálogo:** `CatalogoCursos` mantém a coleção de cursos, verifica códigos únicos e valida o grafo de pré-requisitos.
+- **Matrícula como entidade de associação:** `Matricula` representa a relação entre aluno e turma, mantendo nota, frequência, data e estado.
+- **Persistência independente:** as entidades convertem seus dados com `to_dict`/`from_dict`; `JsonManager` realiza operações de arquivo e `carregador.py` recompõe as referências entre objetos.
+
+### Fluxo arquitetural
+
+```mermaid
+flowchart TD
+    U[Usuário] --> M[cli/menu.py]
+    M --> T[cli/telas.py]
+    M --> R[cli/relatorios.py]
+    T --> D[modulos/]
+    R --> D
+    T --> P[persistencia/]
+    L[main.py] --> C[persistencia/carregador.py]
+    C --> P
+    C --> D
+    P --> J[(arquivos JSON em dados/)]
 ```
 
-A aplicação realiza a leitura dos arquivos ao iniciar e salva as alterações realizadas durante a utilização do sistema.
+## UML
 
-A persistência é realizada por meio da classe `JsonManager`, responsável pelas operações de leitura e gravação dos arquivos.
+O diagrama de classes completo, incluindo herança, associações e multiplicidades, está em [`docs/uml.md`](docs/uml.md). O arquivo utiliza Mermaid e pode ser visualizado diretamente no GitHub.
 
----
-
-## 🏗️ Estrutura do projeto
+## Estrutura do projeto
 
 ```text
 Gerenciador-de-cursos/
-│
 ├── cli/
 │   ├── menu.py
-│   └── telas.py
-│
+│   ├── telas.py
+│   └── relatorios.py
 ├── dados/
 │   ├── alunos.json
 │   ├── cursos.json
 │   ├── matriculas.json
 │   └── turmas.json
-│
+├── docs/
+│   └── uml.md
 ├── modulos/
 │   ├── aluno.py
 │   ├── catalogo_cursos.py
@@ -289,309 +136,129 @@ Gerenciador-de-cursos/
 │   ├── oferta.py
 │   ├── pessoa.py
 │   └── turma.py
-│
 ├── persistencia/
 │   ├── carregador.py
-│   └── json_manager.py
-│
+│   ├── json_manager.py
+│   └── seed.py
 ├── tests/
+│   ├── conftest.py
 │   ├── test_aluno.py
 │   ├── test_carregador.py
 │   ├── test_cli.py
 │   ├── test_curso.py
 │   ├── test_matricula.py
+│   ├── test_relatorios.py
 │   └── test_turma.py
-│
 ├── main.py
-├── settings.py
+├── requirements.txt
 ├── settings.json
+├── settings.py
 └── README.md
 ```
 
----
+## Configuração e execução
 
-## 🧩 Programação Orientada a Objetos
+### Requisitos
 
-O projeto foi estruturado utilizando conceitos de Programação Orientada a Objetos.
+- Python 3.10 ou superior.
+- `pip`.
+- Dependências listadas em `requirements.txt`.
 
-### Encapsulamento
-
-Os atributos das classes são mantidos encapsulados, utilizando atributos privados e propriedades para controlar o acesso e a alteração dos dados.
-
-Por exemplo:
-
-```python
-@property
-def nome(self):
-    return self._nome
-```
-
-As propriedades também permitem realizar validações antes de modificar determinados atributos.
-
----
-
-### Herança
-
-O sistema utiliza herança para representar relações entre as entidades.
-
-Um exemplo é a classe `Aluno`, que utiliza herança múltipla:
-
-```python
-class Aluno(Pessoa, HistoricoAcademico):
-```
-
-Dessa forma, o aluno reutiliza comportamentos relacionados aos dados pessoais e ao histórico acadêmico.
-
----
-
-### Herança múltipla
-
-A classe `Aluno` combina duas responsabilidades:
-
-- `Pessoa`: informações pessoais, como nome e e-mail;
-- `HistoricoAcademico`: operações relacionadas ao histórico e ao CR.
-
-Essa estrutura permite aplicar herança múltipla de forma diretamente relacionada ao domínio do sistema.
-
----
-
-### Métodos especiais
-
-O projeto também utiliza métodos especiais do Python para tornar as classes mais naturais de utilizar.
-
-Entre eles:
-
-```python
-__str__
-__repr__
-__eq__
-__lt__
-__len__
-__contains__
-__iter__
-```
-
-Esses métodos permitem, por exemplo:
-
-- representar objetos como texto;
-- comparar objetos;
-- ordenar alunos;
-- obter o tamanho de uma turma ou coleção;
-- verificar se um elemento pertence a uma coleção;
-- iterar sobre objetos.
-
----
-
-## 🧪 Testes
-
-O projeto utiliza **pytest** para realização dos testes automatizados.
-
-Os testes abrangem diferentes partes do sistema, incluindo:
-
-- alunos;
-- cursos;
-- turmas;
-- matrículas;
-- persistência;
-- interface CLI;
-- regras de negócio.
-
-Para executar todos os testes:
-
-```bash
-pytest -q
-```
-
-O projeto possui uma suíte de testes automatizados para verificar o funcionamento das principais funcionalidades e regras do sistema.
-
----
-
-## 📋 Requisitos
-
-Para executar o projeto, é necessário ter instalado:
-
-- Python 3.10 ou superior;
-- pip;
-- pytest para execução dos testes.
-
-Verifique a instalação do Python com:
+Verifique a versão do Python:
 
 ```bash
 python --version
 ```
 
-ou:
+### Instalação
 
-```bash
-python3 --version
-```
-
----
-
-## 📥 Instalação
-
-Clone o repositório:
+Clone o repositório e entre na pasta:
 
 ```bash
 git clone https://github.com/ramona-dev/Gerenciador-de-cursos.git
-```
-
-Entre na pasta:
-
-```bash
 cd Gerenciador-de-cursos
 ```
 
-Opcionalmente, crie um ambiente virtual:
+Crie e ative um ambiente virtual (recomendado):
 
 ```bash
 python -m venv .venv
 ```
 
-Ative o ambiente virtual.
+Windows PowerShell:
 
-### Windows
-
-```bash
-.venv\Scripts\activate
+```powershell
+.venv\Scripts\Activate.ps1
 ```
 
-### Linux/macOS
+Linux/macOS:
 
 ```bash
 source .venv/bin/activate
 ```
 
-Instale o pytest:
+Instale as dependências:
 
 ```bash
-pip install pytest
+pip install -r requirements.txt
 ```
 
----
-
-## ▶️ Executando o sistema
-
-Para iniciar a aplicação:
+### Iniciar a aplicação
 
 ```bash
 python main.py
 ```
 
-O sistema apresenta o menu principal:
+O menu principal oferece acesso a cursos, alunos, turmas, matrículas e relatórios. Para voltar ao menu anterior, utilize a opção `0 - Voltar`; para encerrar, utilize `0 - Sair` no menu principal.
 
-```text
-==========================================
- GERENCIADOR DE CURSOS
-==========================================
-1 - Cursos
-2 - Alunos
-3 - Turmas
-4 - Matrículas
-5 - Relatórios
-0 - Sair
+## Persistência e dados de demonstração
+
+Os dados são armazenados em JSON na pasta `dados/`:
+
+- `cursos.json`
+- `alunos.json`
+- `turmas.json`
+- `matriculas.json`
+
+`persistencia/json_manager.py` centraliza a leitura e gravação. `persistencia/carregador.py` reconstrói os objetos e valida referências entre cursos, turmas, alunos e matrículas.
+
+Para recriar os dados de demonstração:
+
+```bash
+python -m persistencia.seed
 ```
 
-A partir desse menu é possível acessar as funcionalidades do sistema.
+**Atenção:** a geração do seed sobrescreve os arquivos JSON atuais da pasta `dados/`. Faça uma cópia dos seus dados antes de executar o comando.
 
----
+As regras configuráveis ficam em `settings.json`:
 
-## 🖥️ Interface
+| Chave | Descrição |
+|---|---|
+| `nota_minima_aprovacao` | Nota mínima para aprovação. |
+| `frequencia_minima` | Percentual mínimo de frequência. |
+| `data_limite_trancamento` | Último dia permitido para trancamento. |
+| `max_turmas_por_aluno` | Quantidade máxima de turmas ativas por aluno; `null` não impõe limite. |
+| `top_n_alunos` | Quantidade de estudantes exibida no ranking. |
 
-A aplicação utiliza uma interface de linha de comando (CLI), permitindo que o usuário navegue pelas funcionalidades através do terminal.
+## Testes
 
-O menu principal é dividido em cinco áreas:
+A suíte automatizada utiliza `pytest` e cobre entidades, regras de matrícula, validações de horários, persistência, interface CLI e relatórios.
 
-```text
-1 - Cursos
-2 - Alunos
-3 - Turmas
-4 - Matrículas
-5 - Relatórios
+Execute todos os testes na raiz do projeto:
+
+```bash
+python -m pytest -q
 ```
 
-Cada área possui suas próprias operações relacionadas ao domínio acadêmico.
+Os testes dos relatórios verificam ocupação de vagas, exclusão de matrículas trancadas/incompletas das taxas de aprovação, cálculo do CR por período e comportamento quando não existem resultados concluídos.
 
----
+## Limitações conhecidas
 
-## 🔄 Fluxo básico de utilização
+- O CR é calculado como média aritmética simples das notas registradas; não há ponderação por carga horária.
+- Registros de histórico sem ID de turma são preservados, mas não podem ser atribuídos a um período letivo nos relatórios por período.
+- O campo opcional de ementa do curso ainda não está modelado nesta versão.
 
-Um fluxo típico de utilização do sistema pode ser:
+## Responsável
 
-```text
-Cadastrar curso
-       ↓
-Definir pré-requisitos
-       ↓
-Cadastrar aluno
-       ↓
-Criar turma
-       ↓
-Abrir turma
-       ↓
-Realizar matrícula
-       ↓
-Lançar nota e frequência
-       ↓
-Consultar situação acadêmica
-       ↓
-Gerar relatórios
-```
-
-Esse fluxo representa a utilização das principais funcionalidades do sistema.
-
----
-
-## 📁 Organização das responsabilidades
-
-O projeto foi dividido em módulos para separar as responsabilidades.
-
-### `modulos/`
-
-Contém as principais entidades e regras de domínio do sistema.
-
-### `cli/`
-
-Contém a interface de linha de comando e os menus utilizados pelo usuário.
-
-### `persistencia/`
-
-Responsável pela leitura, gravação e reconstrução dos dados persistidos.
-
-### `dados/`
-
-Armazena os dados persistidos em formato JSON.
-
-### `tests/`
-
-Contém os testes automatizados do sistema.
-
----
-
-## 🎯 Objetivos acadêmicos
-
-O projeto tem como principais objetivos:
-
-- aplicar Programação Orientada a Objetos;
-- utilizar encapsulamento;
-- aplicar herança e herança múltipla;
-- utilizar métodos especiais do Python;
-- implementar regras de negócio;
-- trabalhar com persistência de dados;
-- desenvolver testes automatizados;
-- organizar um sistema em módulos;
-- desenvolver uma aplicação funcional utilizando CLI.
-
----
-
-## 👩‍💻 Responsável
-
-**Ramona Vitória**
-
-Projeto desenvolvido para fins acadêmicos na área de Engenharia de Software.
-
----
-
-## 📄 Licença
-
-Este projeto foi desenvolvido para fins acadêmicos.
+**Ramona Vitória**  
+Projeto acadêmico de Engenharia de Software.

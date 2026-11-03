@@ -1,0 +1,179 @@
+# Diagrama UML — Gerenciador de Cursos e Alunos
+
+O diagrama de classes abaixo representa as entidades centrais do domínio e seus relacionamentos implementados no projeto.
+
+## Diagrama de classes
+
+```mermaid
+classDiagram
+    class Pessoa {
+        -str _nome
+        -str _email
+        +nome
+        +email
+    }
+
+    class HistoricoAcademico {
+        -list _historico
+        +historico
+        +cr
+        +calculo_de_CR()
+        +adicionar_disciplina()
+        +registrar_resultado_matricula()
+        +remover_resultado_matricula()
+        +aprovado_em()
+    }
+
+    class Aluno {
+        -str _matricula
+        -list _turmas
+        +matricula
+        +turmas
+        +adicionar_turma()
+        +remover_turma()
+        +to_dict()
+        +from_dict()
+        +__lt__()
+        +__repr__()
+    }
+
+    class Oferta {
+        -str _semestre
+        -int _vagas
+        -str _local
+        -bool _aberta
+        +semestre
+        +vagas
+        +local
+        +aberta
+        +abrir()
+        +fechar()
+    }
+
+    class Curso {
+        -str _codigo
+        -str _nome
+        -int _carga_horaria
+        -list _prerequisitos
+        +codigo
+        +nome
+        +carga_horaria
+        +prerequisitos
+        +adicionar_prerequisito()
+        +remover_prerequisito()
+        +to_dict()
+        +from_dict()
+        +__str__()
+        +__repr__()
+    }
+
+    class CatalogoCursos {
+        -dict _cursos
+        +cursos
+        +buscar()
+        +adicionar_curso()
+        +remover_curso()
+        +adicionar_prerequisito()
+        +possui_ciclo()
+        +validar_referencias()
+        +__contains__()
+        +__len__()
+        +__iter__()
+    }
+
+    class Turma {
+        -Curso _curso
+        -str _id
+        -dict _matriculas
+        -dict _horarios
+        +curso
+        +id
+        +horarios
+        +matriculas
+        +registrar_matricula()
+        +tem_choque()
+        +adicionar_aluno()
+        +__len__()
+        +to_dict()
+        +from_dict()
+    }
+
+    class Matricula {
+        -Aluno _aluno
+        -Turma _turma
+        -float _nota
+        -float _frequencia
+        -bool _ativa
+        -date _data
+        +aluno
+        +turma
+        +nota
+        +frequencia
+        +ativa
+        +data
+        +lancar_nota()
+        +lancar_frequencia()
+        +trancar()
+        +situacao()
+        +to_dict()
+        +from_dict()
+        +__eq__()
+        +__repr__()
+    }
+
+    Aluno --|> Pessoa
+    Aluno --|> HistoricoAcademico
+    Turma --|> Oferta
+
+    CatalogoCursos "1" o-- "0..*" Curso : administra
+    Turma "0..*" --> "1" Curso : oferta
+    Turma "1" o-- "0..*" Matricula : registra
+    Matricula "0..*" --> "1" Aluno : pertence a
+    Matricula "0..*" --> "1" Turma : referencia
+    Aluno "1" --> "0..*" Turma : turmas ativas
+```
+
+## Diagrama de sequência — matrícula de aluno
+
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant Menu as cli/menu.py
+    participant Tela as cli/telas.py
+    participant Matricula
+    participant Turma
+    participant Aluno
+    participant JSON as JsonManager
+
+    Usuario->>Menu: Escolhe Matrículas
+    Menu->>Tela: matricular_aluno(dados)
+    Tela->>Tela: Localiza aluno e turma
+    Tela->>Matricula: Matricula(aluno, turma)
+    Matricula->>Turma: adicionar_aluno(aluno, configuracoes)
+    Turma->>Aluno: consulta histórico e turmas ativas
+    Turma-->>Matricula: validações aprovadas
+    Matricula->>Aluno: adicionar_turma(turma)
+    Matricula->>Turma: registrar_matricula(self)
+    Matricula-->>Tela: objeto de matrícula
+    Tela->>JSON: salva dados/matriculas.json
+    Tela-->>Usuario: confirma operação
+```
+
+## Interpretação dos relacionamentos
+
+- **Herança múltipla:** `Aluno` herda de `Pessoa` e `HistoricoAcademico`; combina dados pessoais com operações de histórico e cálculo do CR.
+- **Herança simples:** `Turma` herda de `Oferta`; reutiliza período, vagas, local e estado de abertura.
+- **Catálogo:** `CatalogoCursos` mantém a coleção de cursos e aplica regras de unicidade e dependência entre pré-requisitos.
+- **Associação de matrícula:** `Matricula` liga um `Aluno` a uma `Turma` e registra nota, frequência, data e estado.
+- **Curso e turma:** uma turma oferece um curso; horários e capacidade são definidos na turma.
+- **Turmas ativas:** `Aluno.turmas` contém as turmas em que o aluno possui matrícula ativa. Uma matrícula trancada continua registrada, mas não ocupa vaga nem permanece na lista de turmas ativas.
+
+## Camadas da aplicação
+
+| Camada | Responsabilidade |
+|---|---|
+| `main.py` | Inicializa o carregamento do sistema e inicia o menu. |
+| `cli/` | Interação com o usuário, navegação, operações de tela e relatórios. |
+| `modulos/` | Entidades e regras do domínio acadêmico. |
+| `persistencia/` | Leitura, gravação e reconstrução dos objetos. |
+| `dados/` | Armazenamento dos registros em JSON. |
