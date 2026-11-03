@@ -2,7 +2,8 @@ import pytest
 
 from modulos.aluno import Aluno
 from modulos.curso import Curso
-
+from modulos.historico_academico import HistoricoAcademico
+from modulos.pessoa import Pessoa
 
 def test_criacao_aluno_valido():
     aluno = Aluno("2025001", "Maria", "maria@email.com")
@@ -59,3 +60,19 @@ def test_ordem_por_cr_e_nome():
 def test_email_invalido_na_criacao():
     with pytest.raises(ValueError):
         Aluno("2025008", "Pedro", "email-invalido")
+
+def test_aluno_utiliza_heranca_multipla():
+    aluno = Aluno(
+        "2025010",
+        "João",
+        "joao@email.com"
+    )
+
+    assert isinstance(aluno, Pessoa)
+    assert isinstance(aluno, HistoricoAcademico)
+
+def test_aluno_possui_heranca_multipla():
+    mro = Aluno.__mro__
+
+    assert Pessoa in mro
+    assert HistoricoAcademico in mro
