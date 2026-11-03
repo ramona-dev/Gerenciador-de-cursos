@@ -7,9 +7,17 @@ from modulos.pessoa import Pessoa
 class Aluno(Pessoa, HistoricoAcademico):
     def __init__(self, matricula: str, nome: str, email: str):
         super().__init__(nome, email)
+
         if not isinstance(matricula, str) or not matricula.strip():
             raise ValueError("Matrícula não pode ser vazia.")
-        self._matricula = matricula.strip()
+
+        matricula = matricula.strip()
+        if not matricula.isascii() or not matricula.isdecimal():
+            raise ValueError(
+                "Matrícula deve conter somente números (0 a 9)."
+            )
+
+        self._matricula = matricula
         self._historico = []
         self._turmas = []
 

@@ -1,16 +1,16 @@
 # Gerenciador de Cursos e Alunos
 
-Sistema acadêmico desenvolvido em Python com interface de linha de comando (CLI), Programação Orientada a Objetos e persistência em arquivos JSON. A aplicação organiza cursos, alunos, turmas e matrículas, aplica regras de matrícula e disponibiliza relatórios acadêmicos.
+Sistema acadêmico desenvolvido em Python, com interface de linha de comando (CLI), Programação Orientada a Objetos e persistência em arquivos JSON. A aplicação permite administrar cursos, alunos, turmas e matrículas, aplicar regras de matrícula e consultar relatórios acadêmicos.
 
 ## Sumário
 
 - [Funcionalidades](#funcionalidades)
-- [Regras de negócio](#regras-de-negócio)
+- [Regras de negócio e validações](#regras-de-negócio-e-validações)
 - [Relatórios](#relatórios)
-- [Arquitetura e decisões de design](#arquitetura-e-decisões-de-design)
+- [Organização e decisões de design](#organização-e-decisões-de-design)
 - [UML](#uml)
 - [Estrutura do projeto](#estrutura-do-projeto)
-- [Configuração e execução](#configuração-e-execução)
+- [Instalação e execução](#instalação-e-execução)
 - [Persistência e dados de demonstração](#persistência-e-dados-de-demonstração)
 - [Testes](#testes)
 - [Limitações conhecidas](#limitações-conhecidas)
@@ -19,78 +19,105 @@ Sistema acadêmico desenvolvido em Python com interface de linha de comando (CLI
 
 ### Cursos
 
-- Cadastrar, consultar, editar e remover cursos.
-- Definir código, nome, carga horária e pré-requisitos.
+- Cadastrar, listar, editar e remover cursos.
+- Armazenar código, nome, carga horária, ementa opcional e pré-requisitos.
 - Adicionar e remover pré-requisitos.
-- Validar referências e impedir ciclos entre pré-requisitos.
+- Impedir código duplicado, pré-requisito inexistente, autorreferência e ciclos entre pré-requisitos.
+- Manter compatibilidade com arquivos JSON antigos que ainda não possuem o campo `ementa`.
 
 ### Alunos
 
-- Cadastrar, consultar, editar e remover alunos.
-- Manter matrícula, nome e e-mail.
+- Cadastrar, listar, editar e remover alunos.
+- Armazenar matrícula, nome e e-mail.
 - Consultar histórico acadêmico e Coeficiente de Rendimento (CR).
-- Consultar turmas com matrícula ativa.
+- Consultar turmas em que o aluno possui matrícula ativa.
 
 ### Turmas
 
-- Criar, consultar e remover turmas.
-- Abrir e fechar turmas para matrícula.
-- Definir período letivo, dias, horários, capacidade e local.
-- Consultar alunos matriculados e ocupação.
+- Criar, listar, abrir, fechar e remover turmas.
+- Definir curso, período letivo, dias, horários, capacidade e local.
+- Consultar ocupação das vagas.
 
 ### Matrículas
 
-- Matricular um aluno em uma turma.
+- Matricular alunos em turmas abertas.
 - Lançar nota e frequência.
-- Consultar a situação acadêmica.
-- Trancar matrícula, respeitando o prazo configurado.
+- Consultar situação acadêmica.
+- Trancar matrícula dentro do prazo configurado.
 
-## Regras de negócio
+## Regras de negócio e validações
 
-O sistema valida as regras antes de efetivar uma matrícula:
+### Cursos
 
-1. A turma precisa estar aberta.
-2. A turma precisa possuir vaga disponível.
-3. O aluno não pode ter outra matrícula ativa na mesma turma.
-4. O aluno precisa ter aprovação em todos os pré-requisitos do curso.
-5. Não pode haver conflito de horário com outra turma ativa no mesmo período letivo.
-6. O limite máximo de turmas simultâneas, quando configurado, não pode ser ultrapassado.
+- O código é normalizado para letras maiúsculas, deve ter pelo menos três caracteres e não pode ser duplicado. A regra atual não exige que o código contenha letras; portanto, um código como `003` é aceito.
+- O nome precisa conter pelo menos uma letra. Números podem aparecer junto com letras, por exemplo, `Programação 2`.
+- A carga horária deve ser um número inteiro positivo.
+- A ementa é opcional. Quando informada, deve ser texto. Na edição, `Enter` mantém a ementa atual e `-` a remove.
+- Um curso não pode ser removido quando está vinculado a turmas, consta no histórico dos alunos ou é pré-requisito de outro curso.
 
-Uma matrícula trancada é mantida no arquivo de dados para preservar o registro acadêmico, mas deixa de ocupar vaga e de compor as turmas ativas do aluno. Também não é considerada nos relatórios de resultados concluídos.
+### Alunos
+
+- A matrícula não pode ser vazia e deve ser única no cadastro.
+- O nome deve conter letras e não pode conter algarismos.
+- O e-mail precisa seguir uma estrutura básica de endereço, como `nome@dominio.com`.
+- O aluno precisa ter aprovação em todos os pré-requisitos antes de ingressar em uma turma.
+
+### Turmas
+
+- O semestre deve seguir o padrão `AAAA.1` ou `AAAA.2`, como `2026.2`.
+- A capacidade deve ser um número inteiro positivo.
+- É necessário informar pelo menos um dia e um horário válido.
+- A matrícula só pode ser feita em turma aberta e com vaga disponível.
+- Um aluno não pode ter duas matrículas para a mesma turma. Essa restrição também se aplica quando a matrícula anterior foi trancada, evitando registros duplicados que seriam rejeitados pelo carregador JSON.
+- Um aluno não pode ter conflito de horário com outra turma ativa no mesmo semestre.
+- Quando configurado, o limite de turmas simultâneas por aluno é respeitado.
+
+### Matrículas e trancamento
+
+- Nota deve estar entre 0 e 10; frequência, entre 0 e 100.
+- Matrículas trancadas não ocupam vagas, não ficam na lista de turmas ativas do aluno e não participam dos relatórios de resultados concluídos.
+- Matrículas trancadas permanecem armazenadas para preservar o registro da operação.
+- Não é permitido lançar nota ou frequência em uma matrícula trancada.
+
+### Entrada pela CLI
+
+- Os campos de texto, inteiros e números decimais têm até três tentativas de entrada.
+- Depois de três valores inválidos, a operação é cancelada e o usuário retorna ao submenu correspondente.
+- Uma regra de negócio que falha depois do preenchimento também encerra aquela operação; o sistema não reinicia silenciosamente o cadastro.
+- Os submenus permanecem abertos após cada operação para permitir outras ações. A opção `0 - Voltar` retorna ao menu anterior.
 
 ## Relatórios
 
-Os relatórios são implementados em `cli/relatorios.py`, separados das telas de cadastro e das regras do menu.
+As implementações dos relatórios ficam centralizadas em `cli/relatorios.py`. `cli/telas.py` apenas reexporta os nomes públicos antigos para manter compatibilidade com chamadas existentes; não mantém uma segunda implementação.
 
 | Relatório | Conteúdo e critério |
 |---|---|
-| Alunos por turma | Lista apenas matrículas ativas, mostra ocupação `vagas ocupadas / capacidade` e informa separadamente a quantidade de trancamentos. |
-| Top N por CR no período | Solicita um período letivo e calcula a média simples das notas concluídas associadas às turmas daquele período. A quantidade exibida vem de `top_n_alunos`. |
-| Taxa de aprovação | Apresenta resultados agrupados por curso e por turma. Considera matrículas concluídas ativas; matrículas trancadas ou ainda cursando não entram no denominador. |
-| Distribuição de notas | Exibe média, mediana e desvio padrão das notas lançadas em matrículas ativas por turma. |
+| Alunos por turma | Lista matrículas ativas, mostra ocupação `vagas ocupadas / capacidade` e informa separadamente os trancamentos. |
+| Top N por CR no período | Solicita o período letivo e calcula a média simples das notas concluídas associadas às turmas daquele período. A quantidade exibida usa `top_n_alunos`. |
+| Taxa de aprovação | Apresenta resultados agrupados por curso e por turma. Considera matrículas concluídas ativas; trancadas ou ainda cursando não entram no denominador. |
+| Distribuição de notas | Apresenta média, mediana e desvio padrão das notas em matrículas ativas por turma. |
 | Alunos em risco | Lista matrículas ativas com nota ou frequência abaixo dos limites configurados. |
 
-**Critério do CR por período:** são utilizadas as notas existentes no histórico acadêmico que tenham ID de turma associado. Registros históricos antigos sem vínculo com turma não permitem identificar o período e, portanto, ficam fora do ranking por período. O cálculo mantém a média aritmética simples já utilizada pelo domínio (`Aluno.cr` / `HistoricoAcademico.cr`).
+**CR por período:** são usadas notas do histórico que possuem ID de turma associado. Registros de histórico antigos sem esse vínculo não podem ser atribuídos a um período e, por isso, não entram nesse ranking.
 
-## Arquitetura e decisões de design
+## Organização e decisões de design
 
-O projeto foi dividido em quatro áreas principais:
+O projeto está organizado em quatro áreas principais:
 
 - `modulos/`: entidades do domínio e regras acadêmicas.
-- `cli/`: interação com o usuário, menus e apresentação dos relatórios.
-- `persistencia/`: leitura, gravação e reconstrução dos objetos a partir de JSON.
-- `dados/`: arquivos JSON usados pela aplicação.
+- `cli/`: menus, operações de interação e apresentação dos relatórios.
+- `persistencia/`: leitura, gravação e reconstrução dos objetos a partir dos arquivos JSON.
+- `dados/`: arquivos JSON usados para persistência.
 
-A separação entre menu e telas evita que a navegação concentre as operações do domínio. O menu utiliza um fluxo de submenu compartilhado, enquanto `cli/relatorios.py` concentra consultas e cálculos de relatórios. `cli/telas.py` mantém as operações interativas de cadastro e matrícula e reexporta os nomes antigos dos relatórios para compatibilidade com chamadas anteriores.
+Decisões principais:
 
-### Decisões de orientação a objetos
-
-- **Encapsulamento:** atributos de domínio são mantidos em atributos internos, com propriedades que validam ou controlam seu acesso.
-- **Herança múltipla:** `Aluno` herda de `Pessoa` e `HistoricoAcademico`, combinando dados pessoais e comportamento de histórico/CR.
+- **Encapsulamento:** atributos do domínio são controlados por propriedades que validam os valores antes de armazená-los.
+- **Herança múltipla:** `Aluno` herda de `Pessoa` e `HistoricoAcademico`, combinando dados pessoais e operações de histórico/CR.
 - **Herança simples:** `Turma` herda de `Oferta`, reutilizando período, capacidade, local e estado de abertura.
-- **Responsabilidade do catálogo:** `CatalogoCursos` mantém a coleção de cursos, verifica códigos únicos e valida o grafo de pré-requisitos.
-- **Matrícula como entidade de associação:** `Matricula` representa a relação entre aluno e turma, mantendo nota, frequência, data e estado.
-- **Persistência independente:** as entidades convertem seus dados com `to_dict`/`from_dict`; `JsonManager` realiza operações de arquivo e `carregador.py` recompõe as referências entre objetos.
+- **Catálogo de cursos:** `CatalogoCursos` centraliza unicidade e dependências entre pré-requisitos.
+- **Matrícula como associação:** `Matricula` representa a relação entre um aluno e uma turma, com nota, frequência, data e situação.
+- **Relatórios separados:** os cálculos e a apresentação dos relatórios ficam em `cli/relatorios.py`, separados das operações de cadastro em `cli/telas.py`.
+- **Persistência:** as entidades implementam `to_dict`/`from_dict`; `JsonManager` lê e grava arquivos; `carregador.py` recompõe as referências entre os objetos.
 
 ### Fluxo arquitetural
 
@@ -110,7 +137,7 @@ flowchart TD
 
 ## UML
 
-O diagrama de classes completo, incluindo herança, associações e multiplicidades, está em [`docs/uml.md`](docs/uml.md). O arquivo utiliza Mermaid e pode ser visualizado diretamente no GitHub.
+O diagrama de classes e o diagrama de sequência estão em [`docs/uml.md`](docs/uml.md). O arquivo utiliza Mermaid e pode ser visualizado diretamente pelo GitHub.
 
 ## Estrutura do projeto
 
@@ -148,7 +175,8 @@ Gerenciador-de-cursos/
 │   ├── test_curso.py
 │   ├── test_matricula.py
 │   ├── test_relatorios.py
-│   └── test_turma.py
+│   ├── test_turma.py
+│   └── test_validacoes_regras.py
 ├── main.py
 ├── requirements.txt
 ├── settings.json
@@ -156,19 +184,12 @@ Gerenciador-de-cursos/
 └── README.md
 ```
 
-## Configuração e execução
+## Instalação e execução
 
 ### Requisitos
 
 - Python 3.10 ou superior.
 - `pip`.
-- Dependências listadas em `requirements.txt`.
-
-Verifique a versão do Python:
-
-```bash
-python --version
-```
 
 ### Instalação
 
@@ -203,24 +224,22 @@ Instale as dependências:
 pip install -r requirements.txt
 ```
 
-### Iniciar a aplicação
+Inicie o sistema:
 
 ```bash
 python main.py
 ```
 
-O menu principal oferece acesso a cursos, alunos, turmas, matrículas e relatórios. Para voltar ao menu anterior, utilize a opção `0 - Voltar`; para encerrar, utilize `0 - Sair` no menu principal.
-
 ## Persistência e dados de demonstração
 
-Os dados são armazenados em JSON na pasta `dados/`:
+Os arquivos JSON são armazenados em `dados/`:
 
 - `cursos.json`
 - `alunos.json`
 - `turmas.json`
 - `matriculas.json`
 
-`persistencia/json_manager.py` centraliza a leitura e gravação. `persistencia/carregador.py` reconstrói os objetos e valida referências entre cursos, turmas, alunos e matrículas.
+`persistencia/json_manager.py` centraliza leitura e gravação. `persistencia/carregador.py` reconstrói os objetos e valida referências entre cursos, turmas, alunos e matrículas.
 
 Para recriar os dados de demonstração:
 
@@ -228,35 +247,33 @@ Para recriar os dados de demonstração:
 python -m persistencia.seed
 ```
 
-**Atenção:** a geração do seed sobrescreve os arquivos JSON atuais da pasta `dados/`. Faça uma cópia dos seus dados antes de executar o comando.
+**Atenção:** a geração do seed sobrescreve os arquivos JSON atuais da pasta `dados/`. Faça uma cópia antes de executar o comando.
 
-As regras configuráveis ficam em `settings.json`:
+As configurações ficam em `settings.json`:
 
 | Chave | Descrição |
 |---|---|
 | `nota_minima_aprovacao` | Nota mínima para aprovação. |
 | `frequencia_minima` | Percentual mínimo de frequência. |
 | `data_limite_trancamento` | Último dia permitido para trancamento. |
-| `max_turmas_por_aluno` | Quantidade máxima de turmas ativas por aluno; `null` não impõe limite. |
-| `top_n_alunos` | Quantidade de estudantes exibida no ranking. |
+| `max_turmas_por_aluno` | Quantidade máxima de turmas ativas; `null` não impõe limite. |
+| `top_n_alunos` | Quantidade exibida no ranking de CR. |
 
 ## Testes
 
-A suíte automatizada utiliza `pytest` e cobre entidades, regras de matrícula, validações de horários, persistência, interface CLI e relatórios.
+A suíte automatizada utiliza `pytest` e cobre entidades, validações, regras de matrícula, horários, persistência, interface CLI e relatórios. Os testes adicionais de `tests/test_validacoes_regras.py` verificam, entre outros pontos, nomes numéricos, e-mails, ementa, semestre, capacidade, tentativas limitadas de entrada e matrícula após trancamento.
 
-Execute todos os testes na raiz do projeto:
+Execute os testes na raiz do projeto:
 
 ```bash
 python -m pytest -q
 ```
 
-Os testes dos relatórios verificam ocupação de vagas, exclusão de matrículas trancadas/incompletas das taxas de aprovação, cálculo do CR por período e comportamento quando não existem resultados concluídos.
-
 ## Limitações conhecidas
 
-- O CR é calculado como média aritmética simples das notas registradas; não há ponderação por carga horária.
-- Registros de histórico sem ID de turma são preservados, mas não podem ser atribuídos a um período letivo nos relatórios por período.
-- O campo opcional de ementa do curso ainda não está modelado nesta versão.
+- O CR é calculado como média aritmética simples das notas; não é ponderado pela carga horária.
+- Registros antigos de histórico sem ID de turma são preservados, mas não podem ser classificados por período no ranking.
+- A validação de e-mail verifica a estrutura básica do endereço; não verifica se a caixa postal ou o domínio realmente existem.
 
 ## Responsável
 

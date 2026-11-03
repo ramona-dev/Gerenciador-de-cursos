@@ -1,0 +1,217 @@
+"""Testes de regressão para validações e regras de negócio corrigidas."""
+
+import pytest
+
+from cli import relatorios, telas
+from modulos.aluno import Aluno
+from modulos.curso import Curso
+from modulos.matricula import Matricula
+from modulos.oferta import Oferta
+from modulos.pessoa import Pessoa
+from modulos.turma import Turma
+
+
+def dados_basicos():
+    curso = Curso("MAT101", "Matemática", 60)
+    aluno = Aluno("2026001", "Ana Silva", "ana@email.com")
+    turma = Turma(
+        curso,
+        "MAT001",
+        "2026.2",
+        {"seg": "08:00-10:00"},
+        10,
+    )
+    return {
+        "cursos": [curso],
+        "alunos": [aluno],
+        "turmas": [turma],
+        "matriculas": [],
+    }
+
+
+def configurar_cli(monkeypatch, entradas):
+    iterador = iter(entradas)
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _mensagem="": next(iterador),
+    )
+    monkeypatch.setattr(telas, "pausar", lambda: None)
+    monkeypatch.setattr(
+        telas.JsonManager,
+        "salvar",
+        staticmethod(lambda _caminho, _dados: None),
+    )
+
+
+def test_curso_rejeita_nome_formado_apenas_por_numeros():
+    with pytest.raises(ValueError, match="pelo menos uma letra"):
+        Curso("MAT102", "0", 60)
+
+
+def test_curso_aceita_numero_no_nome_quando_ha_letras():
+    curso = Curso("PROG2", "Programação 2", 60)
+    assert curso.nome == "Programação 2"
+
+
+def test_codigo_numerico_com_tres_caracteres_permanece_valido():
+    # A regra do projeto exige três caracteres e unicidade; não exige letras.
+    curso = Curso("003", "Geografia", 60)
+    assert curso.codigo == "003"
+
+
+def test_ementa_e_persistida_e_carregada():
+    curso = Curso(
+        "MAT102",
+        "Matemática Aplicada",
+        60,
+        ementa="Funções, matrizes e estatística.",
+    )
+    reconstruido = Curso.from_dict(curso.to_dict())
+    assert reconstruido.ementa == "Funções, matrizes e estatística."
+
+
+def test_arquivo_antigo_sem_ementa_continua_compativel():
+    curso = Curso.from_dict({
+        "codigo": "MAT101",
+        "nome": "Matemática",
+        "carga_horaria": 60,
+        "prerequisitos": [],
+    })
+    assert curso.ementa is None
+
+
+def test_ementa_aceita_ausencia_e_rejeita_tipo_invalido():
+    curso = Curso("MAT101", "Matemática", 60)
+    assert curso.ementa is None
+    with pytest.raises(ValueError, match="texto"):
+        curso.ementa = 123
+
+
+def test_pessoa_rejeita_nome_somente_numerico():
+    with pytest.raises(ValueError, match="pelo menos uma letra"):
+        Pessoa("12345", "pessoa@email.com")
+
+
+def test_pessoa_rejeita_digitos_no_nome():
+    with pytest.raises(ValueError, match="não pode conter números"):
+        Aluno("2026002", "Maria123", "maria@email.com")
+
+
+def test_pessoa_aceita_nome_com_acento_hifen_e_apostrofo():
+    aluno = Aluno("2026003", "João D'Ávila", "joao@email.com")
+    assert aluno.nome == "João D'Ávila"
+
+
+@pytest.mark.parametrize(
+    "email",
+    ["sem-arroba", "nome@", "@dominio.com", "nome dominio@email.com", "nome@dominio"],
+)
+def test_pessoa_rejeita_email_invalido(email):
+    with pytest.raises(ValueError, match="E-mail inválido"):
+        Pessoa("Maria Silva", email)
+
+
+def test_oferta_rejeita_vagas_zero():
+    with pytest.raises(ValueError, match="inteiro positivo"):
+        Oferta("2026.2", 0)
+
+
+def test_oferta_rejeita_vagas_fracionarias_e_booleanas():
+    with pytest.raises(ValueError, match="inteiro positivo"):
+        Oferta("2026.2", 1.5)
+    with pytest.raises(ValueError, match="inteiro positivo"):
+        Oferta("2026.2", True)
+
+
+@pytest.mark.parametrize("semestre", ["2026", "2026.3", "26.2", "2026.2.1", ""])
+def test_oferta_rejeita_semestre_invalido(semestre):
+    with pytest.raises(ValueError, match="Semestre inválido"):
+        Oferta(semestre, 10)
+
+
+def test_oferta_aceita_semestre_valido_e_normaliza_espacos():
+    oferta = Oferta(" 2026.2 ", 10)
+    assert oferta.semestre == "2026.2"
+
+
+def test_matricula_nao_pode_ser_recriada_apos_trancamento():
+    curso = Curso("MAT101", "Matemática", 60)
+    turma = Turma(
+        curso,
+        "MAT001",
+        "2026.2",
+        {"seg": "08:00-10:00"},
+        10,
+    )
+    aluno = Aluno("2026004", "Carlos Silva", "carlos@email.com")
+    matricula = Matricula(aluno, turma)
+    matricula.trancar({"data_limite_trancamento": "2099-12-31"})
+
+    with pytest.raises(ValueError, match="matrícula trancada"):
+        Matricula(aluno, turma)
+
+
+def test_cadastro_de_curso_rejeita_nome_numerico_e_aceita_correcao(
+    monkeypatch,
+):
+    dados = dados_basicos()
+    configurar_cli(
+        monkeypatch,
+        [
+            "BIO101",
+            "0",
+            "Biologia 2",
+            "90",
+            "Introdução à biologia celular.",
+        ],
+    )
+
+    telas.cadastrar_curso(dados)
+
+    curso = dados["cursos"][-1]
+    assert curso.nome == "Biologia 2"
+    assert curso.ementa == "Introdução à biologia celular."
+
+
+def test_cadastro_cancela_apos_tres_codigos_invalidos(monkeypatch, capsys):
+    dados = dados_basicos()
+    configurar_cli(monkeypatch, ["0", "0", "0"])
+
+    telas.cadastrar_curso(dados)
+
+    assert len(dados["cursos"]) == 1
+    assert "Operação cancelada após 3 tentativas" in capsys.readouterr().out
+
+
+def test_edicao_de_curso_valida_nome_e_pode_remover_ementa(monkeypatch):
+    dados = dados_basicos()
+    dados["cursos"][0].ementa = "Ementa anterior."
+    configurar_cli(
+        monkeypatch,
+        ["MAT101", "0", "Matemática Aplicada 2", "", "-"],
+    )
+
+    telas.editar_curso(dados)
+
+    assert dados["cursos"][0].nome == "Matemática Aplicada 2"
+    assert dados["cursos"][0].ementa is None
+
+
+def test_edicao_de_aluno_nao_aceita_nome_com_numeros(monkeypatch):
+    dados = dados_basicos()
+    configurar_cli(
+        monkeypatch,
+        ["2026001", "Ana123", "Ana Souza", ""],
+    )
+
+    telas.editar_aluno(dados)
+
+    assert dados["alunos"][0].nome == "Ana Souza"
+
+
+def test_telas_reexporta_relatorios_sem_reimplementar():
+    assert (
+        telas.relatorio_alunos_por_turma
+        is relatorios.relatorio_alunos_por_turma
+    )
+    assert telas.relatorio_top_cr is relatorios.relatorio_top_cr
