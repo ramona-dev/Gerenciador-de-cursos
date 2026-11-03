@@ -47,7 +47,7 @@
     {
         "id": "001",
         "curso": "MAT101",
-        "semestre": "1 ",
+        "semestre": "2026.2",
         "horarios": {
             "seg": [
                 "09:00-10:00"
@@ -60,7 +60,7 @@
     {
         "id": "002",
         "curso": "DES101",
-        "semestre": "2",
+        "semestre": "2026.2",
         "horarios": {
             "seg": [
                 "08:00-10:00"

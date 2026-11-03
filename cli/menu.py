@@ -1,4 +1,4 @@
-"""Menus da aplicação CLI."""
+"""Menus da aplicação CLI; delega cada operação ao módulo responsável."""
 
 from cli.telas import (
     cadastrar_curso, editar_curso, remover_curso, listar_cursos,
@@ -6,8 +6,13 @@ from cli.telas import (
     cadastrar_aluno, editar_aluno, remover_aluno, listar_alunos,
     criar_turma, remover_turma, abrir_turma, fechar_turma, listar_turmas,
     matricular_aluno, lancar_nota, lancar_frequencia, trancar_matricula,
-    listar_matriculas, relatorio_alunos_por_turma, relatorio_top_cr,
-    relatorio_taxa_aprovacao, relatorio_distribuicao_notas,
+    listar_matriculas,
+)
+from cli.relatorios import (
+    relatorio_alunos_por_turma,
+    relatorio_top_cr,
+    relatorio_taxa_aprovacao,
+    relatorio_distribuicao_notas,
     relatorio_alunos_em_risco,
 )
 
@@ -46,113 +51,85 @@ def executar_menu(dados):
             print("\nOpção inválida.")
 
 
-def menu_cursos(dados):
+def _executar_submenu(titulo, opcoes, acoes, dados):
+    """Executa submenus com o mesmo fluxo de navegação."""
     while True:
-        print("\n=== CURSOS ===")
-        print("1 - Cadastrar curso")
-        print("2 - Listar cursos")
-        print("3 - Editar curso")
-        print("4 - Remover curso")
-        print("5 - Adicionar pré-requisito")
-        print("6 - Remover pré-requisito")
+        print(f"\n=== {titulo} ===")
+        for numero, descricao in opcoes:
+            print(f"{numero} - {descricao}")
         print("0 - Voltar")
+
         opcao = _ler_opcao()
-        acoes = {
-            "1": cadastrar_curso,
-            "2": listar_cursos,
-            "3": editar_curso,
-            "4": remover_curso,
-            "5": adicionar_prerequisito,
-            "6": remover_prerequisito,
-        }
         if opcao == "0":
             return
+
         acao = acoes.get(opcao)
-        if acao:
-            acao(dados)
-        else:
+        if acao is None:
             print("Opção inválida.")
+            continue
+        acao(dados)
+
+
+def menu_cursos(dados):
+    _executar_submenu(
+        "CURSOS",
+        [("1", "Cadastrar curso"), ("2", "Listar cursos"),
+         ("3", "Editar curso"), ("4", "Remover curso"),
+         ("5", "Adicionar pré-requisito"), ("6", "Remover pré-requisito")],
+        {"1": cadastrar_curso, "2": listar_cursos, "3": editar_curso,
+         "4": remover_curso, "5": adicionar_prerequisito,
+         "6": remover_prerequisito},
+        dados,
+    )
 
 
 def menu_alunos(dados):
-    while True:
-        print("\n=== ALUNOS ===")
-        print("1 - Cadastrar aluno")
-        print("2 - Listar alunos")
-        print("3 - Editar aluno")
-        print("4 - Remover aluno")
-        print("0 - Voltar")
-        opcao = _ler_opcao()
-        acoes = {"1": cadastrar_aluno, "2": listar_alunos, "3": editar_aluno, "4": remover_aluno}
-        if opcao == "0":
-            return
-        acao = acoes.get(opcao)
-        if acao:
-            acao(dados)
-        else:
-            print("Opção inválida.")
+    _executar_submenu(
+        "ALUNOS",
+        [("1", "Cadastrar aluno"), ("2", "Listar alunos"),
+         ("3", "Editar aluno"), ("4", "Remover aluno")],
+        {"1": cadastrar_aluno, "2": listar_alunos,
+         "3": editar_aluno, "4": remover_aluno},
+        dados,
+    )
 
 
 def menu_turmas(dados):
-    while True:
-        print("\n=== TURMAS ===")
-        print("1 - Criar turma")
-        print("2 - Listar turmas")
-        print("3 - Abrir turma")
-        print("4 - Fechar turma")
-        print("5 - Remover turma")
-        print("0 - Voltar")
-        opcao = _ler_opcao()
-        acoes = {"1": criar_turma, "2": listar_turmas, "3": abrir_turma,
-                 "4": fechar_turma, "5": remover_turma}
-        if opcao == "0":
-            return
-        acao = acoes.get(opcao)
-        if acao:
-            acao(dados)
-        else:
-            print("Opção inválida.")
+    _executar_submenu(
+        "TURMAS",
+        [("1", "Criar turma"), ("2", "Listar turmas"),
+         ("3", "Abrir turma"), ("4", "Fechar turma"),
+         ("5", "Remover turma")],
+        {"1": criar_turma, "2": listar_turmas, "3": abrir_turma,
+         "4": fechar_turma, "5": remover_turma},
+        dados,
+    )
 
 
 def menu_matriculas(dados):
-    while True:
-        print("\n=== MATRÍCULAS ===")
-        print("1 - Matricular aluno")
-        print("2 - Lançar nota")
-        print("3 - Lançar frequência")
-        print("4 - Trancar matrícula")
-        print("5 - Listar matrículas")
-        print("0 - Voltar")
-        opcao = _ler_opcao()
-        acoes = {"1": matricular_aluno, "2": lancar_nota,
-                 "3": lancar_frequencia, "4": trancar_matricula,
-                 "5": listar_matriculas}
-        if opcao == "0":
-            return
-        acao = acoes.get(opcao)
-        if acao:
-            acao(dados)
-        else:
-            print("Opção inválida.")
+    _executar_submenu(
+        "MATRÍCULAS",
+        [("1", "Matricular aluno"), ("2", "Lançar nota"),
+         ("3", "Lançar frequência"), ("4", "Trancar matrícula"),
+         ("5", "Listar matrículas")],
+        {"1": matricular_aluno, "2": lancar_nota,
+         "3": lancar_frequencia, "4": trancar_matricula,
+         "5": listar_matriculas},
+        dados,
+    )
 
 
 def menu_relatorios(dados):
-    while True:
-        print("\n=== RELATÓRIOS ===")
-        print("1 - Alunos por turma")
-        print("2 - Top N alunos por CR")
-        print("3 - Taxa de aprovação")
-        print("4 - Distribuição de notas")
-        print("5 - Alunos em risco")
-        print("0 - Voltar")
-        opcao = _ler_opcao()
-        acoes = {"1": relatorio_alunos_por_turma, "2": relatorio_top_cr,
-                 "3": relatorio_taxa_aprovacao, "4": relatorio_distribuicao_notas,
-                 "5": relatorio_alunos_em_risco}
-        if opcao == "0":
-            return
-        acao = acoes.get(opcao)
-        if acao:
-            acao(dados)
-        else:
-            print("Opção inválida.")
+    _executar_submenu(
+        "RELATÓRIOS",
+        [("1", "Alunos por turma e ocupação"),
+         ("2", "Top N alunos por CR no período"),
+         ("3", "Taxa de aprovação por curso e turma"),
+         ("4", "Distribuição de notas"),
+         ("5", "Alunos em risco")],
+        {"1": relatorio_alunos_por_turma, "2": relatorio_top_cr,
+         "3": relatorio_taxa_aprovacao,
+         "4": relatorio_distribuicao_notas,
+         "5": relatorio_alunos_em_risco},
+        dados,
+    )
