@@ -23,7 +23,6 @@ Sistema acadêmico desenvolvido em Python, com interface de linha de comando (CL
 - Armazenar código, nome, carga horária, ementa opcional e pré-requisitos.
 - Adicionar e remover pré-requisitos.
 - Impedir código duplicado, pré-requisito inexistente, autorreferência e ciclos entre pré-requisitos.
-- Manter compatibilidade com arquivos JSON antigos que ainda não possuem o campo `ementa`.
 
 ### Alunos
 
@@ -49,7 +48,7 @@ Sistema acadêmico desenvolvido em Python, com interface de linha de comando (CL
 
 ### Cursos
 
-- O código é normalizado para letras maiúsculas, deve ter pelo menos três caracteres e não pode ser duplicado. A regra atual não exige que o código contenha letras; portanto, um código como `003` é aceito.
+- O código é normalizado para letras maiúsculas, deve ter pelo menos três caracteres e não pode ser duplicado. A regra não exige que o código contenha letras; portanto, um código como `003` é aceito.
 - O nome precisa conter pelo menos uma letra. Números podem aparecer junto com letras, por exemplo, `Programação 2`.
 - A carga horária deve ser um número inteiro positivo.
 - A ementa é opcional. Quando informada, deve ser texto. Na edição, `Enter` mantém a ementa atual e `-` a remove.
@@ -57,7 +56,7 @@ Sistema acadêmico desenvolvido em Python, com interface de linha de comando (CL
 
 ### Alunos
 
-- A matrícula não pode ser vazia e deve ser única no cadastro.
+- A matrícula deve conter exclusivamente algarismos de `0` a `9` e ser única. Ela é armazenada como texto para preservar zeros à esquerda.
 - O nome deve conter letras e não pode conter algarismos.
 - O e-mail precisa seguir uma estrutura básica de endereço, como `nome@dominio.com`.
 - O aluno precisa ter aprovação em todos os pré-requisitos antes de ingressar em uma turma.
@@ -81,14 +80,14 @@ Sistema acadêmico desenvolvido em Python, com interface de linha de comando (CL
 
 ### Entrada pela CLI
 
-- Os campos de texto, inteiros e números decimais têm até três tentativas de entrada.
+- As entradas validadas de texto, inteiros e números decimais têm até três tentativas.
 - Depois de três valores inválidos, a operação é cancelada e o usuário retorna ao submenu correspondente.
 - Uma regra de negócio que falha depois do preenchimento também encerra aquela operação; o sistema não reinicia silenciosamente o cadastro.
 - Os submenus permanecem abertos após cada operação para permitir outras ações. A opção `0 - Voltar` retorna ao menu anterior.
 
 ## Relatórios
 
-As implementações dos relatórios ficam centralizadas em `cli/relatorios.py`. `cli/telas.py` apenas reexporta os nomes públicos antigos para manter compatibilidade com chamadas existentes; não mantém uma segunda implementação.
+As implementações dos relatórios ficam centralizadas em `cli/relatorios.py`. `cli/telas.py` reexporta os nomes públicos antigos para manter compatibilidade, sem manter uma segunda implementação.
 
 | Relatório | Conteúdo e critério |
 |---|---|
@@ -175,8 +174,7 @@ Gerenciador-de-cursos/
 │   ├── test_curso.py
 │   ├── test_matricula.py
 │   ├── test_relatorios.py
-│   ├── test_turma.py
-│   └── test_validacoes_regras.py
+│   └── test_turma.py
 ├── main.py
 ├── requirements.txt
 ├── settings.json
@@ -261,12 +259,18 @@ As configurações ficam em `settings.json`:
 
 ## Testes
 
-A suíte automatizada utiliza `pytest` e cobre entidades, validações, regras de matrícula, horários, persistência, interface CLI e relatórios. Os testes adicionais de `tests/test_validacoes_regras.py` verificam, entre outros pontos, nomes numéricos, e-mails, ementa, semestre, capacidade, tentativas limitadas de entrada e matrícula após trancamento.
+A suíte automatizada utiliza `pytest` e cobre entidades, validações, regras de matrícula, horários, persistência, interface CLI e relatórios.
 
-Execute os testes na raiz do projeto:
+Os testes podem ser executados na raiz do projeto:
 
 ```bash
 python -m pytest -q
+```
+
+Para conferir quantos casos serão executados antes de rodar a suíte:
+
+```bash
+python -m pytest --collect-only -q
 ```
 
 ## Limitações conhecidas
